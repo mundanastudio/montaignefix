@@ -1,0 +1,51 @@
+.pad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.dots {
+  display: flex;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.empty,
+.filled {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--color-primary);
+}
+
+.filled {
+  background: var(--color-primary);
+}
+
+.keys {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  width: min(100%, 320px);
+}
+
+.key {
+  min-height: 64px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-heading);
+  font-size: var(--text-xl);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.key:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.key:active:not(:disabled) {
+  background: var(--color-surface-muted);
+}

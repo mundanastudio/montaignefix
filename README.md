@@ -42,6 +42,7 @@ Todo vive en el schema propio **`montaigne_fix`**. Las migraciones están en `su
 | 3 | `20261010190200_montaigne_fix_storage.sql` | Crea el bucket privado `montaigne-fix-fotos` |
 | 4 | `20261010190300_montaigne_fix_seed_staff.sql` | Carga a Fran, Agustín, Andrés y Curro |
 | 5 | `20261010194500_harden_rls_auto_enable.sql` | Quita a `anon` el permiso de ejecutar la función de RLS automático de Supabase (limpia el aviso del Security Advisor) |
+| 6 | `20261011001000_login_attempts.sql` | Intentos de PIN y contraseña (5 fallos, 15 minutos) |
 
 **Estado:** aplicadas en el proyecto `montaigne-fix` (`rnghppmuqbdpbkkljnsr`, eu-west-1) el 10/10/2026 con la CLI. `montaigne_fix` está en Exposed schemas y el Security Advisor no da ningún aviso.
 
@@ -102,3 +103,47 @@ npx supabase@latest migration repair --status applied 20261010190000 20261010190
   - Rellenan `assigned_at`, `resolved_at` y `closed_at`. `closed_at` también se pone al rechazar o marcar como duplicado, y es la fecha que usará el borrado a 12 meses.
 - `ticket_events` y `ticket_notes` no se pueden modificar. Solo se borran junto con su incidencia.
 - Los números `MF-XXXX` vienen de una secuencia. Si un alta falla a mitad, ese número se salta. Es normal.
+
+## PIN y contraseñas
+
+No van en el código. Son secretos del proyecto `montaigne-fix`. Hasta que no los crees, `/equipo` y `/gestion` responden que el acceso no está configurado.
+
+Abre una terminal en la carpeta del proyecto y pega esto. El PIN y las contraseñas se piden ocultos: no aparecen en pantalla ni en el historial.
+
+```powershell
+cd "C:\Users\rs07313\Desktop\LLM Projects\Montaigne Fix"
+
+"MF_SESSION_SECRET=$(node scripts/hash-secret.mjs session)" | Set-Content .secrets.local
+
+$s = Read-Host "PIN del equipo (4 dígitos)" -AsSecureString
+$env:MF_SECRET = [Net.NetworkCredential]::new("", $s).Password
+"MF_TEAM_PIN_HASH=$(node scripts/hash-secret.mjs pin)" | Add-Content .secrets.local
+Remove-Item Env:MF_SECRET
+
+$s = Read-Host "Contraseña de Fran (mínimo 8 caracteres)" -AsSecureString
+$env:MF_SECRET = [Net.NetworkCredential]::new("", $s).Password
+"MF_ADMIN_PASSWORD_HASH_FRAN=$(node scripts/hash-secret.mjs password)" | Add-Content .secrets.local
+Remove-Item Env:MF_SECRET
+
+$s = Read-Host "Contraseña de Curro (mínimo 8 caracteres)" -AsSecureString
+$env:MF_SECRET = [Net.NetworkCredential]::new("", $s).Password
+"MF_ADMIN_PASSWORD_HASH_CURRO=$(node scripts/hash-secret.mjs password)" | Add-Content .secrets.local
+Remove-Item Env:MF_SECRET
+
+npx supabase secrets set --env-file .secrets.local --project-ref rnghppmuqbdpbkkljnsr
+Remove-Item .secrets.local
+```
+
+`.secrets.local` no se sube a git. Bórralo con la última línea aunque el comando anterior falle, y no lo abras para copiarlo al chat.
+
+**Cambiar solo el PIN o una contraseña.** Repite únicamente el bloque de esa persona (el `Read-Host` y las dos líneas de debajo) y el `secrets set`. Quien ya había entrado sigue dentro hasta que caduque su sesión: 30 días en el equipo y 7 en gestión.
+
+**Cerrar todas las sesiones.** Genera otra firma y súbela sola:
+
+```powershell
+"MF_SESSION_SECRET=$(node scripts/hash-secret.mjs session)" | Set-Content .secrets.local
+npx supabase secrets set --env-file .secrets.local --project-ref rnghppmuqbdpbkkljnsr
+Remove-Item .secrets.local
+```
+
+**Si alguien se equivoca.** A la quinta vez seguida hay que esperar 15 minutos. El PIN se cuenta por conexión (la misma red cuenta junta) y cada contraseña por persona: probar la de Fran no bloquea a Curro. En el equipo, "Cambiar de persona" no vuelve a pedir el PIN. "Salir" borra la sesión de ese dispositivo.

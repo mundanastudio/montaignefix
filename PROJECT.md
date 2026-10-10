@@ -100,6 +100,14 @@ Tablas mínimas (ajusta nombres si lo ves mejor, pero justifícalo):
 - El email a Fran queda enganchado en `notifyManager()` de `create-ticket`, sin envío hasta la Fase 6.
 - La respuesta al navegador no incluye el código del parte.
 
+**Decisiones de la Fase 3:**
+- El PIN y las contraseñas se guardan como hash PBKDF2 en secretos de Supabase (`MF_TEAM_PIN_HASH`, `MF_ADMIN_PASSWORD_HASH_FRAN`, `MF_ADMIN_PASSWORD_HASH_CURRO`). La firma de los tokens es `MF_SESSION_SECRET`.
+- 5 fallos seguidos bloquean 15 minutos: el PIN por IP y cada contraseña por persona.
+- Cambiar el PIN o una contraseña no cierra las sesiones ya abiertas. Cambiar `MF_SESSION_SECRET` sí cierra todas.
+- Contraseña mínima de 8 caracteres. El PIN sigue siendo de 4 dígitos.
+- El token del equipo dura 30 días y el de gestión 7. "Cambiar de persona" no vuelve a pedir el PIN. "Salir" borra la sesión de ese dispositivo.
+- Quién actúa sale del token. Al modificar un parte, la función SQL debe llamar a `set_actor` en la misma transacción (fases 4 y 5).
+
 **Fotos:** Supabase Storage, bucket **privado**. Comprimir en el navegador antes de subir (máx. ~1600 px de lado, JPEG ~0,7, objetivo < 500 KB). En la base de datos solo se guarda la ruta. Se muestran en los paneles con URLs firmadas temporales. **Nunca base64 en la base de datos.**
 
 **Seguridad (obligatorio):**
@@ -178,8 +186,8 @@ Plantillas HTML sencillas con la imagen de marca, legibles en móvil.
 
 - [x] Fase 0 — Setup, diseño y tokens
 - [x] Fase 1 — Base de datos, seguridad y storage
-- [ ] Fase 2 — Formulario público
-- [ ] Fase 3 — Accesos (PIN equipo y contraseña gerente)
+- [x] Fase 2 — Formulario público
+- [x] Fase 3 — Accesos (PIN equipo y contraseña gerente)
 - [ ] Fase 4 — Panel del gerente
 - [ ] Fase 5 — Panel del equipo
 - [ ] Fase 6 — Emails

@@ -10,3 +10,16 @@ schemas = ["public", "graphql_public", "montaigne_fix"]
 # Formulario público: no hay usuario ni JWT. La función valida y usa la service role.
 [functions.create-ticket]
 verify_jwt = false
+
+# El acceso lo firma esta app (MF_SESSION_SECRET), no el JWT de Supabase.
+[functions.team-login]
+verify_jwt = false
+
+[functions.team-select]
+verify_jwt = false
+
+[functions.admin-login]
+verify_jwt = false
+
+[functions.session]
+verify_jwt = false
