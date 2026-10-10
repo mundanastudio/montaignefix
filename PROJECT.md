@@ -93,6 +93,13 @@ Tablas mínimas (ajusta nombres si lo ves mejor, pero justifícalo):
 - El historial y las notas no se pueden editar.
 - Bucket: `montaigne-fix-fotos`.
 
+**Decisiones de la Fase 2:**
+- La casilla RGPD se exige, pero no se guarda en la base de datos.
+- Máximo 3 partes por el mismo email en 24 horas. El email de Fran (staff `fran`) no tiene límite. El formulario avisa del límite y, si se supera, dice hasta qué hora hay que esperar.
+- El texto RGPD provisional está en `src/content/rgpd.ts`. Contacto: `Francisco.flores@grupomontaigne.com`.
+- El email a Fran queda enganchado en `notifyManager()` de `create-ticket`, sin envío hasta la Fase 6.
+- La respuesta al navegador no incluye el código del parte.
+
 **Fotos:** Supabase Storage, bucket **privado**. Comprimir en el navegador antes de subir (máx. ~1600 px de lado, JPEG ~0,7, objetivo < 500 KB). En la base de datos solo se guarda la ruta. Se muestran en los paneles con URLs firmadas temporales. **Nunca base64 en la base de datos.**
 
 **Seguridad (obligatorio):**

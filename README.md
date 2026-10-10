@@ -6,8 +6,16 @@ Partes de reparación del Colegio Montaigne. El documento maestro es [`PROJECT.m
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173  (guía visual en /muestra)
+copy .env.example .env.local   # rellena VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY
+npm run dev                    # http://localhost:5173  (formulario en /, guía en /muestra)
+npx vite --host --port 5173    # también desde el móvil, en la misma Wi-Fi
 npm run build
+```
+
+La función `create-ticket` ya está desplegada. Para volver a desplegarla:
+
+```bash
+npx supabase functions deploy create-ticket --project-ref rnghppmuqbdpbkkljnsr --no-verify-jwt
 ```
 
 ## Base de datos (Supabase)

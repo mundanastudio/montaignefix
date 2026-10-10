@@ -76,6 +76,10 @@ jobs:
             exit 1
           fi
           echo "Supabase responding (status: $STATUS)"
+          if [ "${TOKEN_INVALID:-0}" = "1" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN rechazado (caducado o borrado). Sin él no se puede reactivar un proyecto pausado: genera uno nuevo y actualiza el secreto."
+            exit 1
+          fi
 
       - name: Notify on failure
         if: failure()

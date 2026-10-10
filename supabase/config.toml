@@ -6,3 +6,7 @@ project_id = "montaigne-fix"
 # `montaigne_fix` se expone para que las Edge Functions (service_role) usen supabase-js.
 # anon/authenticated no tienen permisos en el schema, así que exponerlo no abre nada.
 schemas = ["public", "graphql_public", "montaigne_fix"]
+
+# Formulario público: no hay usuario ni JWT. La función valida y usa la service role.
+[functions.create-ticket]
+verify_jwt = false
