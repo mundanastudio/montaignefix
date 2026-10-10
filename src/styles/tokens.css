@@ -1,0 +1,157 @@
+/* ==========================================================================
+   Montaigne Fix — tokens de diseño (ÚNICA fuente de verdad)
+   Identidad Mundana Studio: "Arte Logo Mundana Studio.pdf" + mundana.us
+   ========================================================================== */
+
+:root {
+  /* ---- Marca ------------------------------------------------------------ */
+  --mf-navy-900: #08174d;
+  --mf-navy-700: #0c216e; /* Pantone 662 C · color principal */
+  --mf-navy-500: #2a3d8a;
+  --mf-navy-300: #6e7aa8; /* solo bordes/decoración: 4.3:1 sobre blanco */
+  --mf-navy-100: #e6e9f3;
+  --mf-navy-50: #f3f5fa;
+
+  --mf-gold-600: #ff8000; /* hover del dorado (mundana.us) */
+  --mf-gold-500: #f0a21d; /* Pantone 137 C · acento. Nunca como color de texto sobre blanco */
+  --mf-gold-300: #f7c878;
+  --mf-gold-100: #fdf1dc;
+
+  --mf-white: #ffffff;
+  --mf-gray-50: #fafaf9;
+  --mf-gray-100: #f1f1f1;
+  --mf-gray-200: #e2e2e2;
+  --mf-gray-300: #bababa;
+  --mf-gray-600: #595959;
+  --mf-gray-800: #333333;
+
+  /* ---- Semánticos (pares fondo / texto con contraste AA) ---------------- */
+  --mf-success-700: #1f6a43;
+  --mf-success-100: #e3f3ea;
+  --mf-warning-700: #8a4a05;
+  --mf-warning-100: #fdf0dc;
+  --mf-danger-800: #8f1c13;
+  --mf-danger-700: #b42318;
+  --mf-danger-100: #fde8e6;
+  --mf-info-700: #175cd3;
+  --mf-info-100: #e5efff;
+
+  /* ---- Roles de color --------------------------------------------------- */
+  --color-bg: var(--mf-gray-50);
+  --color-surface: var(--mf-white);
+  --color-surface-muted: var(--mf-navy-50);
+  --color-text: var(--mf-gray-800);
+  --color-text-muted: var(--mf-gray-600);
+  --color-heading: var(--mf-navy-700);
+  --color-border: var(--mf-gray-200);
+  --color-border-strong: var(--mf-navy-300);
+
+  --color-primary: var(--mf-navy-700);
+  --color-primary-hover: var(--mf-navy-900);
+  --color-on-primary: var(--mf-white);
+  --color-accent: var(--mf-gold-500);
+  --color-accent-hover: var(--mf-gold-600);
+  --color-on-accent: var(--mf-navy-900);
+
+  --color-error: var(--mf-danger-700);
+  --color-error-bg: var(--mf-danger-100);
+  --color-success: var(--mf-success-700);
+  --color-success-bg: var(--mf-success-100);
+
+  --color-overlay: rgb(8 23 77 / 0.55);
+  --color-focus-ring: var(--mf-navy-500); /* el dorado no llega a 3:1 sobre blanco */
+  --color-focus-halo: var(--mf-gold-300);
+
+  /* ---- Prioridades ------------------------------------------------------ */
+  --priority-p1-bg: var(--mf-danger-700);
+  --priority-p1-fg: var(--mf-white);
+  --priority-p2-bg: var(--mf-warning-100);
+  --priority-p2-fg: var(--mf-warning-700);
+  --priority-p3-bg: var(--mf-navy-100);
+  --priority-p3-fg: var(--mf-navy-700);
+
+  /* ---- Estados de incidencia (fondo / texto) ---------------------------- */
+  --status-nuevo-bg: var(--mf-info-100);
+  --status-nuevo-fg: var(--mf-info-700);
+  --status-asignado-bg: var(--mf-navy-100);
+  --status-asignado-fg: var(--mf-navy-700);
+  --status-en-curso-bg: var(--mf-gold-100);
+  --status-en-curso-fg: var(--mf-warning-700);
+  --status-en-espera-bg: #f1e9fb;
+  --status-en-espera-fg: #5b2a9a;
+  --status-resuelto-bg: var(--mf-success-100);
+  --status-resuelto-fg: var(--mf-success-700);
+  --status-cerrado-bg: var(--mf-gray-100);
+  --status-cerrado-fg: var(--mf-gray-600);
+  --status-rechazado-bg: var(--mf-danger-100);
+  --status-rechazado-fg: var(--mf-danger-700);
+  --status-duplicado-bg: var(--mf-gray-100);
+  --status-duplicado-fg: var(--mf-gray-600);
+
+  /* ---- Tipografía -------------------------------------------------------
+     Corporativa: Helvetica Neue LT Std (comercial → solo informes PDF).
+     Web: Inter autoalojada (libre). */
+  --font-sans: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-weight-light: 300;
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --text-xs: 0.875rem; /* 14 */
+  --text-sm: 0.9375rem; /* 15 */
+  --text-md: 1rem; /* 16 · mínimo en inputs (evita zoom en iOS) */
+  --text-lg: 1.125rem; /* 18 */
+  --text-xl: 1.375rem; /* 22 */
+  --text-2xl: 1.75rem; /* 28 */
+  --text-3xl: 2.125rem; /* 34 */
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --tracking-wide: 0.08em; /* coletillas en mayúsculas, como "THINK LESS. PUBLISH MORE" */
+
+  /* ---- Espaciado (base 4 px) -------------------------------------------- */
+  --space-1: 0.25rem; /* 4 */
+  --space-2: 0.5rem; /* 8 */
+  --space-3: 0.75rem; /* 12 */
+  --space-4: 1rem; /* 16 */
+  --space-6: 1.5rem; /* 24 */
+  --space-8: 2rem; /* 32 */
+  --space-12: 3rem; /* 48 */
+  --space-16: 4rem; /* 64 */
+
+  /* ---- Radios ----------------------------------------------------------- */
+  --radius-sm: 4px; /* badges */
+  --radius-md: 8px; /* inputs */
+  --radius-lg: 16px; /* tarjetas, popups */
+  --radius-pill: 999px; /* botones */
+
+  /* ---- Tamaños ---------------------------------------------------------- */
+  --touch-target: 48px; /* ≥ 44 px exigido */
+  --header-height: 64px;
+  --header-height-desktop: 80px;
+  --content-max: 720px;
+  --wide-max: 1120px;
+  /* Breakpoints (solo referencia; las media queries no admiten var()):
+     sm 640px · lg 1024px */
+
+  /* ---- Sombras ---------------------------------------------------------- */
+  --shadow-sm: 0 1px 2px rgb(12 33 110 / 0.06), 0 1px 3px rgb(12 33 110 / 0.08);
+  --shadow-md: 0 4px 12px rgb(12 33 110 / 0.1);
+  --shadow-lg: 0 20px 48px rgb(12 33 110 / 0.22);
+
+  /* ---- Movimiento ------------------------------------------------------- */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* ---- Capas ------------------------------------------------------------ */
+  --z-header: 10;
+  --z-modal: 100;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+  }
+}

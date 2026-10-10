@@ -1,0 +1,91 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding-top: env(safe-area-inset-top);
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  max-width: var(--wide-max);
+  min-height: var(--header-height);
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  min-height: var(--touch-target);
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.logo {
+  height: 40px;
+  width: auto;
+}
+
+/* Firma discreta de Mundana Studio: en grises, recupera color al interactuar */
+.powered {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  min-height: var(--touch-target);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.poweredText {
+  font-size: 0.75rem;
+  letter-spacing: var(--tracking-wide);
+  text-transform: lowercase;
+  line-height: 1;
+}
+
+.mundana {
+  height: 14px;
+  width: auto;
+  filter: grayscale(1);
+  opacity: 0.6;
+  transition:
+    filter var(--duration-base) var(--ease-out),
+    opacity var(--duration-base) var(--ease-out);
+}
+
+.powered:hover .mundana,
+.powered:focus-visible .mundana {
+  filter: none;
+  opacity: 1;
+}
+
+@media (min-width: 640px) {
+  .powered {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .mundana {
+    height: 16px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .inner {
+    min-height: var(--header-height-desktop);
+    padding: 0 var(--space-8);
+  }
+  .logo {
+    height: 52px;
+  }
+}

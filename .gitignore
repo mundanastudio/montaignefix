@@ -1,0 +1,23 @@
+# Dependencias y build
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Entorno y secretos (nunca al repo)
+.env
+.env.*
+!.env.example
+supabase/.env
+supabase/functions/.env
+supabase/.temp/
+supabase/.branches/
+
+# Fuente comercial (Helvetica Neue LT Std): solo uso local para informes PDF
+assets/fonts/helvetica-neue/
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+*.log
+.vscode/*
+!.vscode/extensions.json
