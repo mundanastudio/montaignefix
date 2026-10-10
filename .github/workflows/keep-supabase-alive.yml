@@ -61,6 +61,9 @@ jobs:
               exit 0
             fi
             echo "Management API query failed, falling back to REST ping"
+            if [ "$STATUS" = "401" ] || [ "$STATUS" = "403" ]; then
+              TOKEN_INVALID=1
+            fi
           fi
           # Respaldo: PostgREST ejecuta la consulta en Postgres aunque responda 401
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
