@@ -33,6 +33,11 @@ Todo vive en el schema propio **`montaigne_fix`**. Las migraciones están en `su
 | 2 | `20261010190100_montaigne_fix_triggers.sql` | Crea los triggers que rellenan las fechas y el historial |
 | 3 | `20261010190200_montaigne_fix_storage.sql` | Crea el bucket privado `montaigne-fix-fotos` |
 | 4 | `20261010190300_montaigne_fix_seed_staff.sql` | Carga a Fran, Agustín, Andrés y Curro |
+| 5 | `20261010194500_harden_rls_auto_enable.sql` | Quita a `anon` el permiso de ejecutar la función de RLS automático de Supabase (limpia el aviso del Security Advisor) |
+
+**Estado:** aplicadas en el proyecto `montaigne-fix` (`rnghppmuqbdpbkkljnsr`, eu-west-1) el 10/10/2026 con la CLI. `montaigne_fix` está en Exposed schemas y el Security Advisor no da ningún aviso.
+
+> **Red corporativa (Zscaler):** si la CLI da *Transport error* o `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`, Node necesita confiar en el certificado de Zscaler. Configura la variable de usuario `NODE_EXTRA_CA_CERTS=%USERPROFILE%\.certs\zscaler-root-ca.pem`. Si el inicio de sesión por navegador falla, entra con un token: `npx supabase@latest login --token sbp_…`.
 
 > Elige **una** de las dos opciones y úsala siempre. Si mezclas las dos, la CLI no sabrá qué migraciones están aplicadas (al final hay una solución).
 
