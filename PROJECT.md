@@ -76,7 +76,7 @@ Cada incidencia tiene un código legible: **MF-0001, MF-0002…**
 
 ## 5. Datos (Supabase)
 
-Proyecto Supabase existente del usuario. Si ya aloja otra herramienta, crear todo en un **schema propio `montaigne_fix`**.
+**Proyecto de Supabase nuevo y dedicado** solo a Montaigne Fix, en la cuenta gratuita del usuario. Está separado del proyecto de la otra empresa, que no se toca. Aun así, todo va en un **schema propio `montaigne_fix`**.
 
 Tablas mínimas (ajusta nombres si lo ves mejor, pero justifícalo):
 - `tickets`: id, código MF-XXXX, nombre y email del solicitante, reparación, lugar, observaciones del solicitante, ruta de la foto, estado, prioridad, técnico asignado, fechas (`created_at`, `assigned_at`, `resolved_at`, `closed_at`, `updated_at`).
@@ -160,7 +160,7 @@ Plantillas HTML sencillas con la imagen de marca, legibles en móvil.
 - Hosting: **Cloudflare Pages** conectado al repo de GitHub (gratis, permite uso por organizaciones, no se "duerme"). Alternativa: Vercel (su plan gratuito es solo para uso personal no comercial).
 - Carpeta local: `C:\Users\rs07313\Desktop\LLM Projects\Montaigne Fix`, añadida al workspace "LLM Projects".
 - `.env.example` documentado; ningún secreto en el repo.
-- El usuario ya tiene un GitHub Action que evita que Supabase pause el proyecto por inactividad.
+- El usuario ya tiene un GitHub Action que evita que Supabase pause su otro proyecto por inactividad. El proyecto nuevo de Montaigne Fix necesita **su propio** keep-alive.
 
 ## 11. Pendiente (no hacer ahora)
 

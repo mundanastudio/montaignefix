@@ -12,7 +12,20 @@ npm run build
 
 ## Base de datos (Supabase)
 
-Todo vive en el schema propio **`montaigne_fix`**, así que no toca otras tablas del proyecto. Las migraciones están en `supabase/migrations/` y hay que aplicarlas **en orden**:
+Montaigne Fix usa un **proyecto de Supabase propio**, separado de cualquier otro. Nunca ejecutes estas migraciones en el proyecto de otra empresa.
+
+### Paso 0 — Crear el proyecto (solo la primera vez)
+
+1. En <https://supabase.com/dashboard>, pulsa **New project**.
+2. Elige tu organización (la cuenta gratuita), escribe como nombre `montaigne-fix` y elige la región **West EU (Ireland)** o **Central EU (Frankfurt)**, que están dentro de la UE (RGPD).
+3. Genera una contraseña de base de datos y **guárdala en tu gestor de contraseñas**: la CLI te la pedirá.
+4. Espera 1–2 minutos a que el proyecto esté listo. **Comprueba arriba a la izquierda que estás dentro de `montaigne-fix`** antes de ejecutar cualquier SQL.
+
+El plan gratuito permite 2 proyectos activos.
+
+### Migraciones
+
+Todo vive en el schema propio **`montaigne_fix`**. Las migraciones están en `supabase/migrations/` y hay que aplicarlas **en orden**:
 
 | Orden | Archivo | Qué hace |
 |---|---|---|
