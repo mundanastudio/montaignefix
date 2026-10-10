@@ -84,6 +84,15 @@ Tablas mínimas (ajusta nombres si lo ves mejor, pero justifícalo):
 - `ticket_notes`: observaciones con tipo (`gestion` | `interna`), autor y fecha. Las observaciones del solicitante van en `tickets`.
 - `staff`: Fran, Agustín, Andrés (y Curro como admin), con nombre, email y rol.
 
+**Decisiones de la Fase 1:**
+- Columnas en inglés; valores de los enums en español (`nuevo`, `en_curso`…).
+- `priority` vacía significa "sin priorizar" hasta que el gerente la pone.
+- `staff` usa las marcas `is_manager` / `is_technician` (Fran tiene las dos). Agustín y Andrés no tienen email: Fran les avisa por teléfono.
+- Los triggers fijan el estado al asignar, quitar o reabrir (`nuevo` ↔ `asignado`). `closed_at` también se rellena en `rechazado` y `duplicado`.
+- El actor de cada cambio se indica con `montaigne_fix.set_actor()` dentro de la misma transacción.
+- El historial y las notas no se pueden editar.
+- Bucket: `montaigne-fix-fotos`.
+
 **Fotos:** Supabase Storage, bucket **privado**. Comprimir en el navegador antes de subir (máx. ~1600 px de lado, JPEG ~0,7, objetivo < 500 KB). En la base de datos solo se guarda la ruta. Se muestran en los paneles con URLs firmadas temporales. **Nunca base64 en la base de datos.**
 
 **Seguridad (obligatorio):**
@@ -161,7 +170,7 @@ Plantillas HTML sencillas con la imagen de marca, legibles en móvil.
 ## 12. Checklist de fases
 
 - [x] Fase 0 — Setup, diseño y tokens
-- [ ] Fase 1 — Base de datos, seguridad y storage
+- [x] Fase 1 — Base de datos, seguridad y storage
 - [ ] Fase 2 — Formulario público
 - [ ] Fase 3 — Accesos (PIN equipo y contraseña gerente)
 - [ ] Fase 4 — Panel del gerente

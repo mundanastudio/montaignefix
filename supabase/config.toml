@@ -1,8 +1,8 @@
 # Configuración de la CLI de Supabase para Montaigne Fix.
-# Vincular al proyecto existente con: supabase link --project-ref <ref>
+# Vincular al proyecto existente con: npx supabase link --project-ref <ref>
 project_id = "montaigne-fix"
 
 [api]
-# Todo el modelo vive en el schema propio `montaigne_fix` y NO se expone por la API REST:
-# el navegador solo habla con Edge Functions.
-schemas = ["public", "graphql_public"]
+# `montaigne_fix` se expone para que las Edge Functions (service_role) usen supabase-js.
+# anon/authenticated no tienen permisos en el schema, así que exponerlo no abre nada.
+schemas = ["public", "graphql_public", "montaigne_fix"]

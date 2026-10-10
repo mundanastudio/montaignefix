@@ -1,0 +1,78 @@
+# Montaigne Fix — powered by Mundana Studio
+
+Partes de reparación del Colegio Montaigne. El documento maestro es [`PROJECT.md`](PROJECT.md).
+
+## Desarrollo
+
+```bash
+npm install
+npm run dev      # http://localhost:5173  (guía visual en /muestra)
+npm run build
+```
+
+## Base de datos (Supabase)
+
+Todo vive en el schema propio **`montaigne_fix`**, así que no toca otras tablas del proyecto. Las migraciones están en `supabase/migrations/` y hay que aplicarlas **en orden**:
+
+| Orden | Archivo | Qué hace |
+|---|---|---|
+| 1 | `20261010190000_montaigne_fix_schema.sql` | Crea el schema, los tipos, las tablas, los índices, los permisos y el RLS |
+| 2 | `20261010190100_montaigne_fix_triggers.sql` | Crea los triggers que rellenan las fechas y el historial |
+| 3 | `20261010190200_montaigne_fix_storage.sql` | Crea el bucket privado `montaigne-fix-fotos` |
+| 4 | `20261010190300_montaigne_fix_seed_staff.sql` | Carga a Fran, Agustín, Andrés y Curro |
+
+> Elige **una** de las dos opciones y úsala siempre. Si mezclas las dos, la CLI no sabrá qué migraciones están aplicadas (al final hay una solución).
+
+### Opción A — Panel SQL de Supabase (recomendada para empezar)
+
+1. Entra en <https://supabase.com/dashboard> y abre tu proyecto.
+2. En el menú de la izquierda, pulsa **SQL Editor** y después **+ New query**.
+3. En el editor (Cursor), abre `supabase/migrations/20261010190000_montaigne_fix_schema.sql`, selecciona todo (Ctrl+A), cópialo (Ctrl+C) y pégalo en el panel SQL.
+4. Pulsa **Run** (o Ctrl+Enter). Debe aparecer *Success. No rows returned*.
+5. Repite los pasos 2 a 4 con los archivos 2, 3 y 4, **en ese orden**, cada uno en una consulta nueva.
+6. **Expón el schema para las Edge Functions:** ve a **Project Settings → Data API** (en algunas versiones del panel está en *Integrations → Data API*). En **Exposed schemas**, añade `montaigne_fix` y guarda.
+   Esto **no** abre nada al público: `anon` no tiene permisos sobre el schema. Sin este paso, las Edge Functions de las siguientes fases no podrán leer las tablas.
+7. Comprueba la seguridad: pega todo `supabase/tests/comprobar_seguridad.sql` en una consulta nueva y pulsa **Run**. Las 18 filas deben decir **OK**.
+
+Si un archivo da error, no sigas con el siguiente: copia el mensaje y revísalo antes. Los archivos 1 a 3 no se pueden ejecutar dos veces (dirían *already exists*). El 4 sí se puede repetir sin duplicar a nadie.
+
+### Opción B — CLI de Supabase (sin instalar nada: con `npx`)
+
+Abre una terminal en la carpeta del proyecto (en Cursor: **Terminal → New Terminal**):
+
+```powershell
+# 1. Inicia sesión: se abre el navegador para autorizar
+npx supabase@latest login
+
+# 2. Vincula la carpeta a tu proyecto. El "project ref" es el código de la URL
+#    del panel: https://supabase.com/dashboard/project/<ESTE_CODIGO>
+#    Te pedirá la contraseña de la base de datos (Project Settings → Database).
+npx supabase@latest link --project-ref TU_PROJECT_REF
+
+# 3. Muestra qué migraciones faltan por aplicar (no cambia nada)
+npx supabase@latest migration list
+
+# 4. Aplica las pendientes. Pide confirmación (escribe Y)
+npx supabase@latest db push
+```
+
+Después haz los pasos **6** (Exposed schemas) y **7** (comprobación) de la opción A.
+
+En las fases siguientes, para aplicar migraciones nuevas solo hay que repetir el paso 4.
+
+**Si ya aplicaste las migraciones con el panel y quieres pasarte a la CLI**, márcalas como aplicadas para que no intente repetirlas:
+
+```powershell
+npx supabase@latest migration repair --status applied 20261010190000 20261010190100 20261010190200 20261010190300
+```
+
+### Cómo escriben las Edge Functions (fases siguientes)
+
+- Solo `service_role` tiene acceso. El navegador nunca habla con las tablas.
+- Para que el historial sepa **quién** hizo un cambio, cada escritura se hace dentro de una transacción que primero llama a `montaigne_fix.set_actor(<id del staff>)`. Si no se llama, el cambio queda como "Sistema", o como "Solicitante" al crear el parte.
+- Los triggers ajustan solos:
+  - Al asignar un técnico a un parte en `nuevo`, pasa a `asignado`. Al quitarlo, vuelve a `nuevo`.
+  - Al reabrir, vuelve a `asignado` si tiene técnico, o a `nuevo` si no.
+  - Rellenan `assigned_at`, `resolved_at` y `closed_at`. `closed_at` también se pone al rechazar o marcar como duplicado, y es la fecha que usará el borrado a 12 meses.
+- `ticket_events` y `ticket_notes` no se pueden modificar. Solo se borran junto con su incidencia.
+- Los números `MF-XXXX` vienen de una secuencia. Si un alta falla a mitad, ese número se salta. Es normal.
