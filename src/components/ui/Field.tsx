@@ -1,4 +1,4 @@
-import { useId, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
+import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import styles from "./Field.module.css";
 
 interface FieldShellProps {
@@ -77,6 +77,25 @@ export function Textarea({ label, hint, error, id, required, className, rows = 4
         className={[styles.control, styles.textarea, className].filter(Boolean).join(" ")}
         {...rest}
       />
+    </FieldShell>
+  );
+}
+
+export function Select({ label, hint, error, id, required, className, children, ...rest }: CommonProps & SelectHTMLAttributes<HTMLSelectElement>) {
+  const autoId = useId();
+  const fieldId = id ?? autoId;
+  return (
+    <FieldShell id={fieldId} label={label} required={required} hint={hint} error={error}>
+      <select
+        id={fieldId}
+        required={required}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy(fieldId, hint, error)}
+        className={[styles.control, className].filter(Boolean).join(" ")}
+        {...rest}
+      >
+        {children}
+      </select>
     </FieldShell>
   );
 }

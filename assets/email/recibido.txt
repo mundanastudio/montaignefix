@@ -1,0 +1,18 @@
+Hola {{nombre}}, ya estamos en ello.
+
+Hemos recibido tu aviso y el equipo de mantenimiento lo atenderá lo antes posible. Te escribiremos de nuevo cuando esté solucionado.
+
+PARTE {{codigo}}
+Reparación:  {{reparacion}}
+Lugar:       {{lugar}}
+Enviado el:  {{fecha_apertura}}
+<!--IF:observaciones-->Tus observaciones: {{observaciones}}
+<!--ENDIF:observaciones-->
+Guarda el código {{codigo}}. Si necesitas añadir algo, abre un nuevo parte y menciónalo en las observaciones.
+
+--
+Montaigne Fix · Colegio Montaigne de Sevilla
+powered by Mundana Studio
+
+Mensaje automático. No respondas a este correo.
+Recibes este email porque abriste un parte de reparación. Tus datos se conservan 12 meses y se usan solo para gestionar la reparación (Grupo Montaigne).

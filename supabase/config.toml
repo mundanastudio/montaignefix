@@ -23,3 +23,78 @@ verify_jwt = false
 
 [functions.session]
 verify_jwt = false
+
+[functions.admin-tickets]
+verify_jwt = false
+
+[functions.admin-ticket]
+verify_jwt = false
+
+[functions.admin-set-priority]
+verify_jwt = false
+
+[functions.admin-set-status]
+verify_jwt = false
+
+[functions.admin-assign]
+verify_jwt = false
+
+[functions.admin-add-note]
+verify_jwt = false
+
+[functions.admin-shopping-list]
+verify_jwt = false
+
+[functions.admin-add-materials]
+verify_jwt = false
+
+[functions.admin-mark-purchased]
+verify_jwt = false
+
+[functions.admin-unmark-purchased]
+verify_jwt = false
+
+[functions.admin-delete-material]
+verify_jwt = false
+
+[functions.admin-delete-ticket]
+verify_jwt = false
+
+[functions.admin-email-log]
+verify_jwt = false
+
+[functions.admin-email-test]
+verify_jwt = false
+
+[functions.admin-report-send]
+verify_jwt = false
+
+[functions.report-tick]
+verify_jwt = false
+
+[functions.admin-edit-material]
+verify_jwt = false
+
+[functions.staff-tickets]
+verify_jwt = false
+
+[functions.staff-ticket]
+verify_jwt = false
+
+[functions.staff-set-status]
+verify_jwt = false
+
+[functions.staff-add-note]
+verify_jwt = false
+
+[functions.staff-assign]
+verify_jwt = false
+
+[functions.staff-add-materials]
+verify_jwt = false
+
+[functions.staff-delete-material]
+verify_jwt = false
+
+[functions.staff-edit-material]
+verify_jwt = false

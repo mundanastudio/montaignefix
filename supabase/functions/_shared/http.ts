@@ -63,7 +63,7 @@ export async function handle(req: Request, run: () => Promise<Response>): Promis
     return await run()
   } catch (error) {
     if (error instanceof HttpError) return json(error.status, error.body)
-    console.error("auth", error instanceof Error ? error.name : "error")
-    return json(500, { ok: false, message: "No se ha podido completar la entrada. Inténtalo de nuevo." })
+    console.error("edge", error instanceof Error ? error.name : "error")
+    return json(500, { ok: false, message: "No se ha podido completar. Inténtalo de nuevo." })
   }
 }

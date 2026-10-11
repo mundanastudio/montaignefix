@@ -1,149 +1,146 @@
-# Montaigne Fix — powered by Mundana Studio
+# Montaigne Fix
 
-Partes de reparación del Colegio Montaigne. El documento maestro es [`PROJECT.md`](PROJECT.md).
+Partes de reparación del Colegio Montaigne (Sevilla). El profesor abre un parte, Fran lo asigna y le pone prioridad, el técnico lo trabaja y, si hace falta, pide material. Fran marca ese material como comprado y cierra el parte. El profesor recibe un correo cuando queda solucionado.
 
-## Desarrollo
+La web es un sitio estático (React, Vite, TypeScript). La base de datos, las fotos y el correo viven en Supabase (proyecto `montaigne-fix`, ref `rnghppmuqbdpbkkljnsr`, región `eu-west-1`). El navegador solo llama a Edge Functions con la clave pública. No lee ni escribe tablas.
 
-```bash
-npm install
-copy .env.example .env.local   # rellena VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY
-npm run dev                    # http://localhost:5173  (formulario en /, guía en /muestra)
-npx vite --host --port 5173    # también desde el móvil, en la misma Wi-Fi
-npm run build
-```
+## Cómo se usa
 
-La función `create-ticket` ya está desplegada. Para volver a desplegarla:
-
-```bash
-npx supabase functions deploy create-ticket --project-ref rnghppmuqbdpbkkljnsr --no-verify-jwt
-```
-
-## Base de datos (Supabase)
-
-Montaigne Fix usa un **proyecto de Supabase propio**, separado de cualquier otro. Nunca ejecutes estas migraciones en el proyecto de otra empresa.
-
-### Paso 0 — Crear el proyecto (solo la primera vez)
-
-1. En <https://supabase.com/dashboard>, pulsa **New project**.
-2. Elige tu organización (la cuenta gratuita), escribe como nombre `montaigne-fix` y elige la región **West EU (Ireland)** o **Central EU (Frankfurt)**, que están dentro de la UE (RGPD).
-3. Genera una contraseña de base de datos y **guárdala en tu gestor de contraseñas**: la CLI te la pedirá.
-4. Espera 1–2 minutos a que el proyecto esté listo. **Comprueba arriba a la izquierda que estás dentro de `montaigne-fix`** antes de ejecutar cualquier SQL.
-
-El plan gratuito permite 2 proyectos activos.
-
-### Migraciones
-
-Todo vive en el schema propio **`montaigne_fix`**. Las migraciones están en `supabase/migrations/` y hay que aplicarlas **en orden**:
-
-| Orden | Archivo | Qué hace |
+| Quién | Dónde | Qué hace |
 |---|---|---|
-| 1 | `20261010190000_montaigne_fix_schema.sql` | Crea el schema, los tipos, las tablas, los índices, los permisos y el RLS |
-| 2 | `20261010190100_montaigne_fix_triggers.sql` | Crea los triggers que rellenan las fechas y el historial |
-| 3 | `20261010190200_montaigne_fix_storage.sql` | Crea el bucket privado `montaigne-fix-fotos` |
-| 4 | `20261010190300_montaigne_fix_seed_staff.sql` | Carga a Fran, Agustín, Andrés y Curro |
-| 5 | `20261010194500_harden_rls_auto_enable.sql` | Quita a `anon` el permiso de ejecutar la función de RLS automático de Supabase (limpia el aviso del Security Advisor) |
-| 6 | `20261011001000_login_attempts.sql` | Intentos de PIN y contraseña (5 fallos, 15 minutos) |
+| Profesor | `/` | Abre el parte. Sin contraseña. Como máximo 3 partes cada 24 horas con el mismo email. |
+| Fran y Curro | `/gestion` | Asignan, priorizan, compran materiales, cierran, reabren, rechazan o marcan duplicado. Cada uno entra con su contraseña. |
+| Fran, Agustín y Andrés | `/equipo` | PIN de 4 cifras, el mismo para los tres, y luego eligen su nombre. Trabajan solo las tareas que tienen asignadas. |
 
-**Estado:** aplicadas en el proyecto `montaigne-fix` (`rnghppmuqbdpbkkljnsr`, eu-west-1) el 10/10/2026 con la CLI. `montaigne_fix` está en Exposed schemas y el Security Advisor no da ningún aviso.
+Un técnico puede pasar a En curso, En espera o Resuelto, dejar una nota y pedir materiales. No puede marcar nada como comprado ni tocar una tarea de otro. Si se equivoca de persona en el dispositivo, usa «Cambiar de persona».
 
-> **Red corporativa (Zscaler):** si la CLI da *Transport error* o `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`, Node necesita confiar en el certificado de Zscaler. Configura la variable de usuario `NODE_EXTRA_CA_CERTS=%USERPROFILE%\.certs\zscaler-root-ca.pem`. Si el inicio de sesión por navegador falla, entra con un token: `npx supabase@latest login --token sbp_…`.
+Al abrir un parte salen dos correos: el acuse al profesor y el aviso a Fran. Al resolver, Fran recibe otro. Al cerrar, el profesor recibe el de solucionado. Los logos de esos correos salen de la dirección pública del sitio (`APP_PUBLIC_URL/email/`).
 
-> Elige **una** de las dos opciones y úsala siempre. Si mezclas las dos, la CLI no sabrá qué migraciones están aplicadas (al final hay una solución).
+Cada miércoles a las 08:00 (hora de Madrid) Fran recibe el informe de los últimos 7 días, con PDF. El 1 de julio a las 08:00, Fran y Curro reciben el informe de los 12 meses anteriores. Después de un informe anual correcto, se borran los partes ya terminados (cerrado, resuelto, rechazado o duplicado) que tengan más de 12 meses y que ya hayan salido en un informe. El botón «Enviar informe» de Gestión manda el semanal en el momento y no sustituye al del miércoles.
 
-### Opción A — Panel SQL de Supabase (recomendada para empezar)
+El número `MF-0001`, `MF-0002`… no se reutiliza, tampoco si se borra el parte.
 
-1. Entra en <https://supabase.com/dashboard> y abre tu proyecto.
-2. En el menú de la izquierda, pulsa **SQL Editor** y después **+ New query**.
-3. En el editor (Cursor), abre `supabase/migrations/20261010190000_montaigne_fix_schema.sql`, selecciona todo (Ctrl+A), cópialo (Ctrl+C) y pégalo en el panel SQL.
-4. Pulsa **Run** (o Ctrl+Enter). Debe aparecer *Success. No rows returned*.
-5. Repite los pasos 2 a 4 con los archivos 2, 3 y 4, **en ese orden**, cada uno en una consulta nueva.
-6. **Expón el schema para las Edge Functions:** ve a **Project Settings → Data API** (en algunas versiones del panel está en *Integrations → Data API*). En **Exposed schemas**, añade `montaigne_fix` y guarda.
-   Esto **no** abre nada al público: `anon` no tiene permisos sobre el schema. Sin este paso, las Edge Functions de las siguientes fases no podrán leer las tablas.
-7. Comprueba la seguridad: pega todo `supabase/tests/comprobar_seguridad.sql` en una consulta nueva y pulsa **Run**. Las 18 filas deben decir **OK**.
+Mientras dure la prueba, los correos dirigidos a Fran también llegan a `soportemundanastudio@mundana.us`. El acuse y el de solucionado siguen yendo solo al profesor. Para quitar la copia, vacía `COPIA_DE_FRAN` en `supabase/functions/_shared/email.ts` y vuelve a desplegar las funciones de correo.
 
-Si un archivo da error, no sigas con el siguiente: copia el mensaje y revísalo antes. Los archivos 1 a 3 no se pueden ejecutar dos veces (dirían *already exists*). El 4 sí se puede repetir sin duplicar a nadie.
+## Cambiar el PIN o una contraseña
 
-### Opción B — CLI de Supabase (sin instalar nada: con `npx`)
+El PIN y las contraseñas no están en el repositorio. En el servidor solo hay un hash. Cinco fallos seguidos bloquean ese acceso 15 minutos.
 
-Abre una terminal en la carpeta del proyecto (en Cursor: **Terminal → New Terminal**):
+En PowerShell, desde la carpeta del proyecto. La comilla simple evita que PowerShell interprete `$` y otros signos:
 
 ```powershell
-# 1. Inicia sesión: se abre el navegador para autorizar
-npx supabase@latest login
-
-# 2. Vincula la carpeta a tu proyecto. El "project ref" es el código de la URL
-#    del panel: https://supabase.com/dashboard/project/<ESTE_CODIGO>
-#    Te pedirá la contraseña de la base de datos (Project Settings → Database).
-npx supabase@latest link --project-ref TU_PROJECT_REF
-
-# 3. Muestra qué migraciones faltan por aplicar (no cambia nada)
-npx supabase@latest migration list
-
-# 4. Aplica las pendientes. Pide confirmación (escribe Y)
-npx supabase@latest db push
+$env:NODE_EXTRA_CA_CERTS = "$env:USERPROFILE\.certs\zscaler-root-ca.pem"
+$env:MF_SECRET = 'el pin o la contrasena nueva'
+node scripts/hash-secret.mjs pin
 ```
 
-Después haz los pasos **6** (Exposed schemas) y **7** (comprobación) de la opción A.
-
-En las fases siguientes, para aplicar migraciones nuevas solo hay que repetir el paso 4.
-
-**Si ya aplicaste las migraciones con el panel y quieres pasarte a la CLI**, márcalas como aplicadas para que no intente repetirlas:
+Para una contraseña, el último argumento es `password` en lugar de `pin`. El PIN son exactamente 4 dígitos. La contraseña, al menos 8 caracteres. El comando imprime una sola línea que empieza por `pbkdf2_sha256$`. Esa línea es el hash. No la pegues en el chat ni en el repo.
 
 ```powershell
-npx supabase@latest migration repair --status applied 20261010190000 20261010190100 20261010190200 20261010190300
-```
-
-### Cómo escriben las Edge Functions (fases siguientes)
-
-- Solo `service_role` tiene acceso. El navegador nunca habla con las tablas.
-- Para que el historial sepa **quién** hizo un cambio, cada escritura se hace dentro de una transacción que primero llama a `montaigne_fix.set_actor(<id del staff>)`. Si no se llama, el cambio queda como "Sistema", o como "Solicitante" al crear el parte.
-- Los triggers ajustan solos:
-  - Al asignar un técnico a un parte en `nuevo`, pasa a `asignado`. Al quitarlo, vuelve a `nuevo`.
-  - Al reabrir, vuelve a `asignado` si tiene técnico, o a `nuevo` si no.
-  - Rellenan `assigned_at`, `resolved_at` y `closed_at`. `closed_at` también se pone al rechazar o marcar como duplicado, y es la fecha que usará el borrado a 12 meses.
-- `ticket_events` y `ticket_notes` no se pueden modificar. Solo se borran junto con su incidencia.
-- Los números `MF-XXXX` vienen de una secuencia. Si un alta falla a mitad, ese número se salta. Es normal.
-
-## PIN y contraseñas
-
-No van en el código. Son secretos del proyecto `montaigne-fix`. Hasta que no los crees, `/equipo` y `/gestion` responden que el acceso no está configurado.
-
-Abre una terminal en la carpeta del proyecto y pega esto. El PIN y las contraseñas se piden ocultos: no aparecen en pantalla ni en el historial.
-
-```powershell
-cd "C:\Users\rs07313\Desktop\LLM Projects\Montaigne Fix"
-
-"MF_SESSION_SECRET=$(node scripts/hash-secret.mjs session)" | Set-Content .secrets.local
-
-$s = Read-Host "PIN del equipo (4 dígitos)" -AsSecureString
-$env:MF_SECRET = [Net.NetworkCredential]::new("", $s).Password
-"MF_TEAM_PIN_HASH=$(node scripts/hash-secret.mjs pin)" | Add-Content .secrets.local
+npx supabase@latest secrets set MF_TEAM_PIN_HASH='pega-aqui-el-hash' --project-ref rnghppmuqbdpbkkljnsr
 Remove-Item Env:MF_SECRET
-
-$s = Read-Host "Contraseña de Fran (mínimo 8 caracteres)" -AsSecureString
-$env:MF_SECRET = [Net.NetworkCredential]::new("", $s).Password
-"MF_ADMIN_PASSWORD_HASH_FRAN=$(node scripts/hash-secret.mjs password)" | Add-Content .secrets.local
-Remove-Item Env:MF_SECRET
-
-$s = Read-Host "Contraseña de Curro (mínimo 8 caracteres)" -AsSecureString
-$env:MF_SECRET = [Net.NetworkCredential]::new("", $s).Password
-"MF_ADMIN_PASSWORD_HASH_CURRO=$(node scripts/hash-secret.mjs password)" | Add-Content .secrets.local
-Remove-Item Env:MF_SECRET
-
-npx supabase secrets set --env-file .secrets.local --project-ref rnghppmuqbdpbkkljnsr
-Remove-Item .secrets.local
 ```
 
-`.secrets.local` no se sube a git. Bórralo con la última línea aunque el comando anterior falle, y no lo abras para copiarlo al chat.
+Contraseña de Fran: `MF_ADMIN_PASSWORD_HASH_FRAN`. Contraseña de Curro: `MF_ADMIN_PASSWORD_HASH_CURRO`. Cada una se genera con `password` y se guarda en su secreto. El cambio vale en el siguiente intento de entrada; no hace falta volver a desplegar la web.
 
-**Cambiar solo el PIN o una contraseña.** Repite únicamente el bloque de esa persona (el `Read-Host` y las dos líneas de debajo) y el `secrets set`. Quien ya había entrado sigue dentro hasta que caduque su sesión: 30 días en el equipo y 7 en gestión.
+## Cambiar el remitente
 
-**Cerrar todas las sesiones.** Genera otra firma y súbela sola:
+El correo sale por `mail.mundana.us`, puerto 465. Supabase no deja salir por los puertos 25 ni 587. El certificado de ese servidor es de `correoseguro.dinaserver.com`; el código ya lo comprueba así. No cambies el servidor salvo que el buzón se mude de verdad.
+
+Para otro buzón del mismo servidor:
 
 ```powershell
-"MF_SESSION_SECRET=$(node scripts/hash-secret.mjs session)" | Set-Content .secrets.local
-npx supabase secrets set --env-file .secrets.local --project-ref rnghppmuqbdpbkkljnsr
-Remove-Item .secrets.local
+npx supabase@latest secrets set --project-ref rnghppmuqbdpbkkljnsr SMTP_USER='buzon@mundana.us' SMTP_PASSWORD='la clave del buzon' MAIL_FROM='Montaigne Fix <buzon@mundana.us>'
 ```
 
-**Si alguien se equivoca.** A la quinta vez seguida hay que esperar 15 minutos. El PIN se cuenta por conexión (la misma red cuenta junta) y cada contraseña por persona: probar la de Fran no bloquea a Curro. En el equipo, "Cambiar de persona" no vuelve a pedir el PIN. "Salir" borra la sesión de ese dispositivo.
+`MAIL_FROM` tiene que ser el mismo buzón que `SMTP_USER`. Usa comillas simples en PowerShell.
+
+## Añadir un técnico
+
+El PIN no es por persona. Un técnico nuevo entra con el mismo PIN y elige su nombre. En el SQL Editor de Supabase:
+
+```sql
+insert into montaigne_fix.staff (slug, name, full_name, email, is_manager, is_technician)
+values ('lucia', 'Lucía', null, null, false, true);
+```
+
+`slug` en minúsculas, sin espacios, y que no exista ya. `active` queda en verdadero. Con `is_technician` en verdadero aparece en Equipo y Fran puede asignarle partes. Sin email no recibe correos: le avisa Fran, igual que a Agustín y Andrés.
+
+El orden de los nombres en la pantalla es Fran, Agustín, Andrés y Curro. Un slug nuevo sale el primero hasta que se añada a la lista `ORDER` de `supabase/functions/_shared/auth.ts` y se redespliegue `team-login`.
+
+Para que alguien sea gerente hace falta, además, `is_manager` en verdadero, un email, y una línea nueva en `PASSWORD_HASH` de ese mismo archivo apuntando a un secreto `MF_ADMIN_PASSWORD_HASH_…`. Hoy solo Fran y Curro son gerentes.
+
+Para dar de baja a alguien sin borrar su historial: `update montaigne_fix.staff set active = false where slug = 'lucia';`
+
+## Si Supabase se pausa
+
+El plan gratuito pausa el proyecto tras unos 7 días sin actividad. Mientras está pausado no entra el formulario, no entran los paneles, no salen correos y no corren los informes.
+
+El workflow `.github/workflows/keep-supabase-alive.yml` se ejecuta cada dos días y, si el proyecto está pausado, pide reactivarlo. En GitHub → Settings → Secrets and variables → Actions tienen que existir:
+
+- `SUPABASE_ACCESS_TOKEN` (token personal de Supabase, el que empieza por `sbp_`)
+- `SUPABASE_PROJECT_REF` = `rnghppmuqbdpbkkljnsr`
+- `SUPABASE_URL` = `https://rnghppmuqbdpbkkljnsr.supabase.co`
+- `SUPABASE_ANON_KEY` (la clave pública, la misma del frontend)
+
+Si aun así se pausa: entra en [el proyecto](https://supabase.com/dashboard/project/rnghppmuqbdpbkkljnsr) y pulsa Restore. Cuando vuelva, los datos siguen donde estaban. El informe pendiente se intenta en la siguiente hora en punto, a partir de las 08:00 de Madrid, si ese día tocaba.
+
+## Cloudflare Pages
+
+La web se publica desde GitHub (`mundanastudio/montaignefix`). Cloudflare compila; no subas la carpeta `dist`.
+
+1. Crea la cuenta en [dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up). El plan gratuito sirve.
+2. Workers y Pages → Create → Pages → Connect to Git.
+3. Autoriza GitHub y elige el repositorio `mundanastudio/montaignefix`. Puede ser privado.
+4. Nombre del proyecto: `montaigne-fix`.
+5. Framework: Vite. Comando de build: `npm run build`. Carpeta de salida: `dist`.
+6. Variables de entorno, en Production y en Preview. Solo estas dos, copiadas de `.env.local` o de Supabase → Project Settings → API:
+
+   - `VITE_SUPABASE_URL` = `https://rnghppmuqbdpbkkljnsr.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY` = la clave anon / publishable
+
+   No pongas ahí la service role, el PIN, las contraseñas, SMTP ni `REPORT_CRON_SECRET`. Esos viven solo en los secretos de Supabase.
+7. Save and Deploy. La primera dirección será `https://montaigne-fix.pages.dev` (o la que te asigne Cloudflare).
+8. Cuando esa dirección responda, dile a Supabase cuál es, sin barra al final:
+
+```powershell
+npx supabase@latest secrets set --project-ref rnghppmuqbdpbkkljnsr APP_PUBLIC_URL='https://montaigne-fix.pages.dev'
+```
+
+Sin ese paso los correos salen, pero los logos no se ven. Si más adelante el colegio usa un dominio propio, repite el comando con la dirección nueva.
+
+El despliegue usa `npx wrangler deploy`, que ya trata la web como aplicación de una sola página: `/gestion` y `/equipo` funcionan al recargar. No hace falta un `_redirects` hacia `index.html` (esa regla entra en bucle y Cloudflare rechaza el despliegue). `public/_headers` manda `noindex`.
+
+## Revisión de seguridad (11 de octubre de 2026)
+
+Hecho contra el proyecto real, con la clave anon de `.env.local`. No se imprimen claves ni fotos.
+
+| Prueba | Resultado |
+|---|---|
+| Leer o insertar en `montaigne_fix.tickets` con la clave pública | 401, `permission denied for schema montaigne_fix` |
+| Llamar a `admin_assign` por la API REST | 404, la función no está expuesta |
+| `admin-tickets`, `admin-mark-purchased` y `staff-ticket` sin token, y `admin-tickets` con la clave anon | 401, sesión caducada |
+| `staff-set-status` con un token inventado | 401, sesión caducada |
+| Foto real del cubo `montaigne-fix-fotos` por la URL pública y por la URL directa, sin firma | 400, el cubo o el archivo no se entregan. Cero bytes |
+| Listar el cubo con la clave pública | 200 y lista vacía |
+
+Un técnico no puede pedir material en una tarea de otro ni marcar comprado: lo comprueba `supabase/tests/comprobar_fase8.sql` actuando como Fran, Andrés, Agustín y Curro (asignar, priorizar, trabajar, pedir material, resolver, comprar, cerrar, reabrir, reasignar y rechazar). El parte de prueba `MF-FASE8` se borra al terminar y no gasta la secuencia. Esa pasada no reenvía correos. Para repetirla: `npx supabase@latest db query --linked -f supabase/tests/comprobar_fase8.sql` (termina con `FASE8 OK`). La prueba HTTP es `node scripts/comprobar-acceso-publico.mjs`.
+
+Las pantallas ya logueadas (lista, ficha, compra) no se abrieron en el navegador: haría falta el PIN o la contraseña, y no se prueban a ciegas. El formulario, el PIN y el acceso de Gestión sí se vieron en 320 px, 390 px, 768 px y 1280 px, sin scroll horizontal. Los campos de texto van a 16 px y los botones pasan de 48 px.
+
+## Pendiente
+
+- Captcha en el formulario. Hoy se confía en que la URL sea interna.
+- Texto legal RGPD definitivo del colegio. La casilla actual es la provisional.
+
+## Desarrollo en local
+
+Hace falta Node y la CLI de Supabase. En la red del colegio, antes de `npx`:
+
+```powershell
+$env:NODE_EXTRA_CA_CERTS = "$env:USERPROFILE\.certs\zscaler-root-ca.pem"
+npm install
+npm run dev
+```
+
+El sitio queda en `http://localhost:5173`. `.env.local` solo lleva `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`. El resto son secretos de Supabase, listados sin valores en `.env.example`.

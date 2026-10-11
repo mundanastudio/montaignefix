@@ -1,6 +1,7 @@
 // Formulario público. verify_jwt = false: no hay sesión, la anon key solo llama aquí.
-// La service role no sale de esta función. El email a Fran se conecta en la Fase 6.
+// La service role no sale de esta función. El aviso a Fran no impide crear el parte.
 import { createClient } from "npm:@supabase/supabase-js@2"
+import { notifyNew } from "../_shared/email.ts"
 
 const LIMITS = { name: 120, email: 254, description: 2000, location: 200, notes: 2000 }
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
@@ -30,17 +31,19 @@ function fieldError(fields: Record<string, string>): Response {
   return json(400, { ok: false, message: first, fields })
 }
 
-/** Fase 6: aquí se enviará el email a Fran con los datos y la foto. */
-function notifyManager(_ticketId: string): void {
-  // Intencionadamente vacío.
-}
 
 function madrid(date: Date): string {
-  return new Intl.DateTimeFormat("es-ES", {
-    dateStyle: "long",
-    timeStyle: "short",
+  const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/Madrid",
-  }).format(date)
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date)
+  const pick = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? ""
+  return `${pick("day")}/${pick("month")}/${pick("year")} • ${pick("hour")}:${pick("minute")}`
 }
 
 Deno.serve(async (req) => {
@@ -155,6 +158,17 @@ Deno.serve(async (req) => {
     return json(500, { ok: false, message: "No se ha podido crear el parte. Inténtalo de nuevo." })
   }
 
-  notifyManager(id)
+  const { data: created } = await db.from("tickets").select("code, created_at").eq("id", id).maybeSingle()
+  await notifyNew({
+    ticketId: id,
+    code: typeof created?.code === "string" ? created.code : "",
+    name,
+    email,
+    description,
+    location,
+    notes,
+    createdAt: typeof created?.created_at === "string" ? created.created_at : new Date().toISOString(),
+    photo: photoBytes,
+  })
   return json(200, { ok: true })
 })

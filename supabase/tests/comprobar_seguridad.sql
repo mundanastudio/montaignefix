@@ -62,6 +62,31 @@ begin
       res := res || array[r, 'Leer notas', 'OK', sqlerrm];
     end;
 
+    begin
+      perform 1 from montaigne_fix.shopping_items limit 1;
+      res := res || array[r, 'Leer materiales', 'FALLO', 'Se ha podido leer'];
+    exception
+      when undefined_table then
+        res := res || array[r, 'Leer materiales', 'FALLO', 'La tabla shopping_items no existe'];
+      when others then
+        res := res || array[r, 'Leer materiales', 'OK', sqlerrm];
+    end;
+
+    begin
+      insert into montaigne_fix.shopping_items (ticket_id, description, requested_by)
+      values ('00000000-0000-0000-0000-000000000000', 'Prueba', '00000000-0000-0000-0000-000000000000');
+      raise exception using errcode = 'P0001', message = '__insert_ok__';
+    exception
+      when undefined_table then
+        res := res || array[r, 'Crear material', 'FALLO', 'La tabla shopping_items no existe'];
+      when others then
+        if sqlerrm = '__insert_ok__' then
+          res := res || array[r, 'Crear material', 'FALLO', 'Se ha podido insertar (deshecho)'];
+        else
+          res := res || array[r, 'Crear material', 'OK', sqlerrm];
+        end if;
+    end;
+
     -- 4. Ejecutar funciones internas
     begin
       perform montaigne_fix.next_ticket_code();

@@ -1,0 +1,16 @@
+NUEVO PARTE {{codigo}}: {{reparacion}}
+
+En {{lugar}}. Lo ha abierto {{nombre}} y está pendiente de que le pongas prioridad y lo asignes.
+
+Solicitante:  {{nombre}} ({{email}})
+Lugar:        {{lugar}}
+Abierto el:   {{fecha_apertura}}
+<!--IF:observaciones-->Observaciones: {{observaciones}}
+<!--ENDIF:observaciones--><!--IF:foto-->Foto: adjunta a este correo.
+<!--ENDIF:foto-->
+Hay {{pendientes_sin_asignar}} parte(s) sin asignar en total.
+Priorizar y asignar: {{url_ticket}}
+
+--
+Aviso interno de Montaigne Fix · powered by Mundana Studio
+Contiene datos personales del solicitante: no lo reenvíes fuera del equipo de gestión.

@@ -36,7 +36,7 @@ Campos:
 
 Junto al campo de la foto, aviso visible: **"No fotografíes a alumnos ni a otras personas. Fotografía solo el desperfecto."**
 
-Al enviar → popup: **"Gracias, atenderemos tu solicitud lo antes posible. Recibirás un correo en tu email cuando esté solucionado."** y el formulario se limpia.
+Al enviar → popup: **"Gracias, atenderemos tu solicitud lo antes posible. Recibirás un correo en tu email cuando esté solucionado."**, y se le envía el email de acuse de recibo (sección 6) y el formulario se limpia.
 
 El solicitante **no ve el estado** de su parte: solo recibe el email final.
 
@@ -45,6 +45,7 @@ El solicitante **no ve el estado** de su parte: solo recibe el email final.
 - Ficha de cada incidencia con todos los datos, la foto y el historial completo.
 - Puede: asignar prioridad (P1/P2/P3), cambiar estado, asignar o reasignar a Fran/Agustín/Andrés, añadir **observaciones de gestión**, cerrar (Resuelto → Cerrado), reabrir, rechazar o marcar como duplicado.
 - Al asignar se guarda la fecha de asignación (vía historial, sección 5).
+- Sección **"Lista de la compra"** (ver 3.4), con un contador de artículos pendientes visible en la navegación del panel.
 
 ### 3.3 Panel del equipo — `/equipo`
 - Pestañas: **"Mis tareas"**, **"Sin asignar"**, **"Todas"** (pendientes y cerradas).
@@ -53,6 +54,26 @@ El solicitante **no ve el estado** de su parte: solo recibe el email final.
   - sus **observaciones internas**.
 - Pueden **asignarse** una incidencia sin asignar, **quitarse** una que tengan y **reasignarla** a otro compañero.
 - Al marcar **Resuelto** se guarda la fecha de resolución y se avisa a Fran.
+- En cada tarea asignada: caja **"Materiales que hay que comprar"** con botón **Enviar** (ver 3.4).
+
+### 3.4 Lista de la compra
+
+**Desde el panel del equipo** (solo en tareas asignadas a la persona seleccionada):
+- Caja de texto "Materiales que hay que comprar" + botón **Enviar**.
+- **Cada línea del texto se convierte en un artículo** independiente (p. ej. "silicona blanca" y "2 bisagras 35 mm" en líneas separadas = 2 artículos). Se ignoran líneas vacías y se recortan espacios. Límite razonable de longitud por línea (p. ej. 200 caracteres).
+- Tras enviar, la caja se vacía y debajo aparece la lista de materiales pedidos para esa tarea con su estado: **Pendiente** o **Comprado (fecha)**.
+- El técnico puede **borrar un artículo suyo mientras esté Pendiente** (para corregir errores). Una vez comprado no se puede tocar.
+- Es independiente del estado de la tarea: no la cambia automáticamente. Se sugiere (sin obligar) pasar la tarea a **En espera** si no puede avanzar sin el material.
+
+**Desde el panel del gerente — sección "Lista de la compra":**
+- Muestra todos los artículos **pendientes**, agrupados por incidencia: código MF-XXXX, reparación y lugar, y para cada artículo quién lo pidió y cuándo. Enlace a la ficha de la incidencia.
+- Fran puede añadir artículos también desde la ficha de cualquier incidencia.
+- Fran selecciona uno o varios artículos (casillas, con "seleccionar todos" por incidencia) y pulsa **Marcar como comprado**.
+- **Popup de confirmación** (modal propio de la app, no `confirm()` del navegador): *"Vas a marcar N artículo(s) como comprados. Al aceptar, desaparecerán de la lista de la compra."* Botones **Cancelar** / **Aceptar**.
+- Al aceptar, los artículos **desaparecen de la lista** pero **no se borran** de la base de datos: se marcan como comprados con fecha y autor (borrado lógico). Así el técnico ve que ya está comprado y queda en el historial e informes.
+- Vista secundaria **"Comprado recientemente"** (últimos 30 días) para deshacer un error: "Volver a pendiente".
+
+**Sin emails nuevos**: la lista de la compra no envía avisos (se mantienen solo los emails de la sección 6). Aparece en el informe semanal (sección 7).
 
 ## 4. Estados y prioridades
 
@@ -64,6 +85,9 @@ El solicitante **no ve el estado** de su parte: solo recibe el email final.
 | Prioridad | ✅ | ❌ |
 | En curso / En espera / Resuelto | ✅ | ✅ |
 | Cerrar / Reabrir / Rechazar / Duplicado | ✅ | ❌ |
+| Añadir materiales a la lista de la compra | ✅ (cualquier incidencia) | ✅ (solo sus tareas) |
+| Borrar un material pendiente | ✅ | ✅ (solo los que pidió él) |
+| Marcar materiales como comprados / volver a pendiente | ✅ | ❌ |
 
 Reabrir una incidencia cerrada la devuelve a `Asignado` (si tiene técnico) o `Nuevo`.
 
@@ -76,37 +100,24 @@ Cada incidencia tiene un código legible: **MF-0001, MF-0002…**
 
 ## 5. Datos (Supabase)
 
-**Proyecto de Supabase nuevo y dedicado** solo a Montaigne Fix, en la cuenta gratuita del usuario. Está separado del proyecto de la otra empresa, que no se toca. Aun así, todo va en un **schema propio `montaigne_fix`**.
+Proyecto Supabase existente del usuario. Si ya aloja otra herramienta, crear todo en un **schema propio `montaigne_fix`**.
 
 Tablas mínimas (ajusta nombres si lo ves mejor, pero justifícalo):
 - `tickets`: id, código MF-XXXX, nombre y email del solicitante, reparación, lugar, observaciones del solicitante, ruta de la foto, estado, prioridad, técnico asignado, fechas (`created_at`, `assigned_at`, `resolved_at`, `closed_at`, `updated_at`).
 - `ticket_events`: **historial** de todo cambio (quién, qué, valor anterior, valor nuevo, cuándo). Fuente de verdad para fechas y para los informes.
 - `ticket_notes`: observaciones con tipo (`gestion` | `interna`), autor y fecha. Las observaciones del solicitante van en `tickets`.
 - `staff`: Fran, Agustín, Andrés (y Curro como admin), con nombre, email y rol.
-
-**Decisiones de la Fase 1:**
-- Columnas en inglés; valores de los enums en español (`nuevo`, `en_curso`…).
-- `priority` vacía significa "sin priorizar" hasta que el gerente la pone.
-- `staff` usa las marcas `is_manager` / `is_technician` (Fran tiene las dos). Agustín y Andrés no tienen email: Fran les avisa por teléfono.
-- Los triggers fijan el estado al asignar, quitar o reabrir (`nuevo` ↔ `asignado`). `closed_at` también se rellena en `rechazado` y `duplicado`.
-- El actor de cada cambio se indica con `montaigne_fix.set_actor()` dentro de la misma transacción.
-- El historial y las notas no se pueden editar.
-- Bucket: `montaigne-fix-fotos`.
-
-**Decisiones de la Fase 2:**
-- La casilla RGPD se exige, pero no se guarda en la base de datos.
-- Máximo 3 partes por el mismo email en 24 horas. El email de Fran (staff `fran`) no tiene límite. El formulario avisa del límite y, si se supera, dice hasta qué hora hay que esperar.
-- El texto RGPD provisional está en `src/content/rgpd.ts`. Contacto: `Francisco.flores@grupomontaigne.com`.
-- El email a Fran queda enganchado en `notifyManager()` de `create-ticket`, sin envío hasta la Fase 6.
-- La respuesta al navegador no incluye el código del parte.
-
-**Decisiones de la Fase 3:**
-- El PIN y las contraseñas se guardan como hash PBKDF2 en secretos de Supabase (`MF_TEAM_PIN_HASH`, `MF_ADMIN_PASSWORD_HASH_FRAN`, `MF_ADMIN_PASSWORD_HASH_CURRO`). La firma de los tokens es `MF_SESSION_SECRET`.
-- 5 fallos seguidos bloquean 15 minutos: el PIN por IP y cada contraseña por persona.
-- Cambiar el PIN o una contraseña no cierra las sesiones ya abiertas. Cambiar `MF_SESSION_SECRET` sí cierra todas.
-- Contraseña mínima de 8 caracteres. El PIN sigue siendo de 4 dígitos.
-- El token del equipo dura 30 días y el de gestión 7. "Cambiar de persona" no vuelve a pedir el PIN. "Salir" borra la sesión de ese dispositivo.
-- Quién actúa sale del token. Al modificar un parte, la función SQL debe llamar a `set_actor` en la misma transacción (fases 4 y 5).
+- `shopping_items` (lista de la compra), un registro por artículo:
+  - `id`
+  - `ticket_id` → `tickets.id` (obligatorio, `on delete cascade` para que el borrado a 12 meses se lleve sus materiales)
+  - `description` (texto, no vacío, ≤ 200 caracteres)
+  - `status`: enum `pendiente` | `comprado`
+  - `requested_by` → `staff.id`, `created_at`
+  - `purchased_by` → `staff.id` (nullable), `purchased_at` (nullable)
+  - Restricción: si `status = 'comprado'` entonces `purchased_at` y `purchased_by` no son nulos; si `pendiente`, ambos nulos.
+  - Índices: `(status, created_at)` para la lista de Fran y `(ticket_id)` para la ficha.
+  - Cada alta, compra, vuelta a pendiente o borrado se registra en `ticket_events` (tipo `material_solicitado`, `material_comprado`, `material_repuesto`, `material_borrado`).
+  - El borrado de un artículo pendiente sí es físico (era un error); el resto es borrado lógico.
 
 **Fotos:** Supabase Storage, bucket **privado**. Comprimir en el navegador antes de subir (máx. ~1600 px de lado, JPEG ~0,7, objetivo < 500 KB). En la base de datos solo se guarda la ruta. Se muestran en los paneles con URLs firmadas temporales. **Nunca base64 en la base de datos.**
 
@@ -114,8 +125,8 @@ Tablas mínimas (ajusta nombres si lo ves mejor, pero justifícalo):
 - RLS activado en **todas** las tablas y en el bucket.
 - El navegador **no puede leer ni escribir directamente** ninguna tabla. Todo pasa por **Supabase Edge Functions** que usan la service role key (que nunca llega al navegador):
   - `create-ticket` (público): valida, sube la foto, crea el parte y avisa a Fran.
-  - `staff-*` (requiere token de sesión del PIN + persona seleccionada).
-  - `admin-*` (requiere token de sesión de la contraseña).
+  - `staff-*` (requiere token de sesión del PIN + persona seleccionada). Incluye `staff-add-materials` (comprueba que la tarea está asignada a quien envía; divide por líneas e inserta todo en una transacción) y `staff-delete-material` (solo pendientes y pedidos por él).
+  - `admin-*` (requiere token de sesión de la contraseña). Incluye `admin-shopping-list`, `admin-add-materials`, `admin-mark-purchased` (recibe una lista de ids; solo actualiza los que siguen pendientes, en una transacción, y devuelve cuántos cambió) y `admin-unmark-purchased`.
 - PIN y contraseñas validados en el servidor con hash; sesión con token firmado y caducidad (p. ej. 30 días equipo, 7 días gerente).
 - Límite básico de intentos de PIN/contraseña.
 - Todas las migraciones como **archivos SQL versionados** en `supabase/migrations/`. El usuario las ejecuta (o se aplican con la CLI de Supabase). Nada creado "a mano" sin migración.
@@ -128,19 +139,21 @@ Solo se envían estos emails:
 
 | Momento | Destinatario | Contenido |
 |---|---|---|
-| Se abre un parte | Fran | Todos los datos + la foto adjunta |
+| Se abre un parte | Solicitante | Acuse de recibo: "ya estamos en ello", con el código MF-XXXX |
+| Se abre un parte | Fran | Todos los datos + la foto (incrustada y adjunta) |
 | Un técnico marca **Resuelto** | Fran | Aviso para que lo revise y lo cierre |
 | Fran marca **Cerrado** | Solicitante | "Tu solicitud MF-XXXX (reparación, lugar) ya está solucionada. Gracias." |
 | Miércoles 8:00 | Fran | Informe semanal |
 | Anual (ver 8) | Fran y Curro | Informe anual |
 
-Plantillas HTML sencillas con la imagen de marca, legibles en móvil.
+Las plantillas HTML y de texto ya están diseñadas en la carpeta `emails/` (recibido, fran-nuevo, fran-resuelto, cerrado). Usarlas tal cual; ver `emails/LEEME-CURSOR.md`.
 
 ## 7. Informes
 
 **Semanal — todos los miércoles a las 8:00 (hora de Madrid, respetando el cambio de hora):**
 - Email a Fran con una **tabla** de lo esencial: resueltas/cerradas en la semana y pendientes (código, reparación, lugar, prioridad, estado, asignado, fechas).
-- **PDF adjunto** con el detalle completo de cada incidencia: fechas, estado, prioridad, asignado, todas las observaciones e historial.
+- Bloque **"Pendiente de comprar"** en el email: artículos pendientes con incidencia, quién lo pidió y desde cuándo.
+- **PDF adjunto** con el detalle completo de cada incidencia: fechas, estado, prioridad, asignado, todas las observaciones, materiales (pendientes y comprados) e historial.
 - Programado con `pg_cron` en Supabase llamando a una Edge Function (o GitHub Actions si es más fiable). Todo en plan gratuito.
 
 **Anual — 1 de julio (fin de curso):**
@@ -152,7 +165,7 @@ Plantillas HTML sencillas con la imagen de marca, legibles en móvil.
 
 - Casilla obligatoria en el formulario con texto breve: responsable (Grupo Montaigne), finalidad (gestionar la reparación y avisar al solicitante), conservación (12 meses) y contacto para ejercer derechos. Dejar el texto en un archivo fácil de editar: **el texto legal definitivo lo dará el colegio**.
 - Aviso de no fotografiar personas (ver 3.1).
-- **Borrado automático**: incidencias cerradas, resueltas, rechazadas o duplicadas hace más de 12 meses → se borran con sus fotos, notas e historial. Se ejecuta **después** del informe anual, así ninguna se borra sin haber salido en un informe.
+- **Borrado automático**: incidencias cerradas, resueltas, rechazadas o duplicadas hace más de 12 meses → se borran con sus fotos, notas, materiales e historial. Se ejecuta **después** del informe anual, así ninguna se borra sin haber salido en un informe.
 - `noindex` y `robots.txt` para que no aparezca en buscadores.
 
 ## 9. Diseño
@@ -161,35 +174,31 @@ Plantillas HTML sencillas con la imagen de marca, legibles en móvil.
 - Logo propio de la herramienta: **Montaigne Fix** (adjunto), con la coletilla **"powered by Mundana Studio"**.
 - Definir los colores y tipografías como tokens (variables CSS) en un único sitio.
 - Mobile-first, accesible (contraste, tamaños de toque ≥ 44 px), estados de carga y error claros.
-- **Decisiones de la Fase 0:**
-  - Los tokens viven en `src/styles/tokens.css`. Colores corporativos: azul `#0c216e` (Pantone 662 C) y dorado `#f0a21d` (Pantone 137 C).
-  - Helvetica Neue LT Std es comercial: la web usa **Inter** autoalojada y Helvetica queda solo para los informes PDF. Está fuera de git, en `assets/fonts/helvetica-neue/`.
-  - El logo de Mundana va en la cabecera, discreto: "powered by" y el logo en grises, que recupera el color al pasar el ratón.
-  - Arte de emails e informes: logo de Grupo Montaigne + colores de Mundana.
-  - La guía visual está en `/muestra`.
 
 ## 10. Stack y despliegue
 
 - Código en **GitHub**.
 - Frontend **estático** (React + Vite + TypeScript o similar). Toda la lógica de servidor en **Supabase Edge Functions**. Así el frontend no guarda ningún secreto y puede publicarse en cualquier hosting estático.
-- Hosting: **Cloudflare Pages** conectado al repo de GitHub (gratis, permite uso por organizaciones, no se "duerme"). Alternativa: Vercel (su plan gratuito es solo para uso personal no comercial).
+- Hosting: **Cloudflare Pages** conectado al repo de GitHub (gratis, permite uso por organizaciones, no se "duerme"). Alternativa: Vercel (su plan gratuito es solo para uso personal no comercial). El build (`npm run build`, salida `dist`) está comprobado. La cuenta de Cloudflare y la conexión del repo las hace el propietario; los pasos están en `README.md`.
 - Carpeta local: `C:\Users\rs07313\Desktop\LLM Projects\Montaigne Fix`, añadida al workspace "LLM Projects".
 - `.env.example` documentado; ningún secreto en el repo.
-- El usuario ya tiene un GitHub Action que evita que Supabase pause su otro proyecto por inactividad. El proyecto nuevo de Montaigne Fix necesita **su propio** keep-alive.
+- El usuario ya tiene un GitHub Action que evita que Supabase pause el proyecto por inactividad.
 
 ## 11. Pendiente (no hacer ahora)
+
+Siguen abiertos después de la Fase 8:
 
 - Captcha en el formulario (se confía en que la URL sea interna).
 - Texto legal RGPD definitivo del colegio.
 
 ## 12. Checklist de fases
 
-- [x] Fase 0 — Setup, diseño y tokens
-- [x] Fase 1 — Base de datos, seguridad y storage
-- [x] Fase 2 — Formulario público
-- [x] Fase 3 — Accesos (PIN equipo y contraseña gerente)
-- [ ] Fase 4 — Panel del gerente
-- [ ] Fase 5 — Panel del equipo
+- [ ] Fase 0 — Setup, diseño y tokens
+- [ ] Fase 1 — Base de datos, seguridad y storage
+- [ ] Fase 2 — Formulario público
+- [ ] Fase 3 — Accesos (PIN equipo y contraseña gerente)
+- [ ] Fase 4 — Panel del gerente (incluye lista de la compra)
+- [ ] Fase 5 — Panel del equipo (incluye pedir materiales)
 - [ ] Fase 6 — Emails
-- [ ] Fase 7 — Informes semanal y anual + borrado a 12 meses
-- [ ] Fase 8 — Pruebas, revisión de seguridad y despliegue
+- [x] Fase 7 — Informes semanal y anual + borrado a 12 meses
+- [x] Fase 8 — Pruebas, revisión de seguridad y despliegue

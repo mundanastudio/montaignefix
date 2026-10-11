@@ -1,0 +1,20 @@
+{{tecnico}} HA RESUELTO {{codigo}}
+
+Revísalo y ciérralo para que {{nombre}} reciba el aviso de que está solucionado. Si no ha quedado bien, puedes reabrirlo.
+
+Reparación:    {{reparacion}}
+Lugar:         {{lugar}}
+Prioridad:     {{prioridad}}
+Resuelto por:  {{tecnico}}
+Abierto el:    {{fecha_apertura}}
+Resuelto el:   {{fecha_resuelto}} · {{duracion}}
+<!--IF:nota_tecnico-->
+Nota de {{tecnico}}: {{nota_tecnico}}
+<!--ENDIF:nota_tecnico--><!--IF:materiales_pendientes-->
+OJO: tiene {{materiales_pendientes}} material(es) pendiente(s) en la lista de la compra.
+<!--ENDIF:materiales_pendientes-->
+Revisar y cerrar: {{url_ticket}}
+
+--
+Aviso interno de Montaigne Fix · powered by Mundana Studio
+Contiene datos personales del solicitante: no lo reenvíes fuera del equipo de gestión.

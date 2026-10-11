@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Nuevo parte {{codigo}}: {{reparacion}}</title>
+<!--
+  Montaigne Fix · Email a FRAN cuando se abre un parte.
+  Variables: {{codigo}} {{reparacion}} {{lugar}} {{nombre}} {{email}} {{fecha_apertura}} (con hora)
+             {{observaciones}} (opcional)
+             {{foto}} (opcional) -> "cid:foto-parte" si la foto va incrustada como adjunto CID
+             {{url_ticket}} -> /gestion con la ficha del parte abierta
+             {{pendientes_sin_asignar}} -> nº de partes en estado Nuevo, incluido este
+             {{url_assets}}
+  Bloques opcionales: lo que va entre los comentarios IF:x y ENDIF:x se elimina entero si la variable x está vacía.
+-->
+<style>
+  body{margin:0;padding:0;background:#eef0f6;}
+  table{border-collapse:collapse;}
+  img{border:0;line-height:100%;outline:none;text-decoration:none;display:block;}
+  a{color:#0c216e;}
+  @media (max-width:620px){
+    .container{width:100% !important;}
+    .px{padding-left:24px !important;padding-right:24px !important;}
+    .h1{font-size:26px !important;line-height:32px !important;}
+    .logo-mf{width:260px !important;height:auto !important;}
+    .label{display:block !important;width:auto !important;padding-bottom:2px !important;border-bottom:0 !important;}
+    .value{display:block !important;width:auto !important;padding-top:0 !important;}
+    .foto{width:100% !important;height:auto !important;}
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#eef0f6;">
+
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#eef0f6;">
+  {{nombre}} ha abierto un parte en {{lugar}}. Pendiente de asignar y priorizar.&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eef0f6;">
+  <tr>
+    <td align="center" style="padding:32px 12px;">
+
+      <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;">
+
+        <tr>
+          <td style="padding:0;font-size:0;line-height:0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td height="6" style="height:6px;background:#0c216e;font-size:0;line-height:0;">&nbsp;</td>
+                <td width="12" height="6" style="width:12px;height:6px;background:#f0a21d;font-size:0;line-height:0;">&nbsp;</td>
+                <td width="12" height="6" style="width:12px;height:6px;background:#ffffff;font-size:0;line-height:0;">&nbsp;</td>
+                <td width="12" height="6" style="width:12px;height:6px;background:#f0a21d;font-size:0;line-height:0;">&nbsp;</td>
+                <td width="12" height="6" style="width:12px;height:6px;background:#29a3d6;font-size:0;line-height:0;">&nbsp;</td>
+                <td width="60" height="6" style="width:60px;height:6px;background:#f0a21d;font-size:0;line-height:0;">&nbsp;</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td align="center" class="px" style="padding:28px 40px 22px 40px;">
+            <img class="logo-mf" src="{{url_assets}}/montaigne-fix-logo.png" width="300" height="93" alt="Montaigne Fix · Reparaciones &amp; mantenimiento integral" style="width:300px;height:93px;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:18px;font-weight:bold;color:#0c216e;">
+          </td>
+        </tr>
+
+        <tr>
+          <td class="px" style="background:#0c216e;padding:34px 40px 36px 40px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="background:#f0a21d;border-radius:4px;padding:5px 10px;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;line-height:14px;font-weight:bold;letter-spacing:2px;color:#0c216e;text-transform:uppercase;">
+                  Nuevo parte · {{codigo}}
+                </td>
+              </tr>
+            </table>
+            <h1 class="h1" style="margin:18px 0 0 0;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:30px;line-height:36px;font-weight:bold;color:#ffffff;">
+              {{reparacion}}
+            </h1>
+            <p style="margin:12px 0 0 0;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:16px;line-height:24px;color:#d5dbf0;">
+              En {{lugar}}. Lo ha abierto {{nombre}} y está pendiente de que le pongas prioridad y lo asignes.
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="px" style="padding:32px 40px 8px 40px;">
+            <p style="margin:0 0 12px 0;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;line-height:16px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:#f0a21d;">
+              Datos del parte
+            </p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #dfe3ee;border-radius:10px;border-collapse:separate;">
+              <tr>
+                <td class="label" width="150" valign="top" style="width:150px;padding:14px 16px;border-bottom:1px solid #dfe3ee;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#5b6483;">Solicitante</td>
+                <td class="value" valign="top" style="padding:14px 16px;border-bottom:1px solid #dfe3ee;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:22px;font-weight:bold;color:#1c2440;">{{nombre}}</td>
+              </tr>
+              <tr>
+                <td class="label" width="150" valign="top" style="width:150px;padding:14px 16px;border-bottom:1px solid #dfe3ee;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#5b6483;">Email</td>
+                <td class="value" valign="top" style="padding:14px 16px;border-bottom:1px solid #dfe3ee;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:22px;color:#1c2440;">{{email}}</td>
+              </tr>
+              <tr>
+                <td class="label" width="150" valign="top" style="width:150px;padding:14px 16px;border-bottom:1px solid #dfe3ee;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#5b6483;">Lugar</td>
+                <td class="value" valign="top" style="padding:14px 16px;border-bottom:1px solid #dfe3ee;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:22px;color:#1c2440;">{{lugar}}</td>
+              </tr>
+              <tr>
+                <td class="label" width="150" valign="top" style="width:150px;padding:14px 16px;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#5b6483;">Abierto el</td>
+                <td class="value" valign="top" style="padding:14px 16px;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:22px;color:#1c2440;">{{fecha_apertura}}</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+<!--IF:observaciones-->
+        <tr>
+          <td class="px" style="padding:20px 40px 0 40px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f5fb;border-radius:10px;">
+              <tr>
+                <td style="padding:16px 18px;">
+                  <p style="margin:0 0 6px 0;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;line-height:16px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;color:#0c216e;">Observaciones del solicitante</p>
+                  <p style="margin:0;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:23px;color:#1c2440;">{{observaciones}}</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+<!--ENDIF:observaciones-->
+<!--IF:foto-->
+        <tr>
+          <td class="px" style="padding:20px 40px 0 40px;">
+            <p style="margin:0 0 10px 0;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;line-height:16px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;color:#5b6483;">Foto del desperfecto</p>
+            <img class="foto" src="{{foto}}" width="520" alt="Foto adjunta por {{nombre}}" style="width:520px;max-width:100%;height:auto;border-radius:10px;border:1px solid #dfe3ee;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:14px;color:#5b6483;">
+            <p style="margin:8px 0 0 0;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#8a92ad;">También va adjunta a este correo.</p>
+          </td>
+        </tr>
+<!--ENDIF:foto-->
+
+        <tr>
+          <td class="px" style="padding:24px 40px 36px 40px;">
+            <p style="margin:0 0 18px 0;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:23px;color:#1c2440;">
+              Hay <strong style="color:#0c216e;">{{pendientes_sin_asignar}}</strong> parte(s) sin asignar en total.
+            </p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td align="center" bgcolor="#f0a21d" style="border-radius:8px;background:#f0a21d;">
+                  <a href="{{url_ticket}}" target="_blank" style="display:inline-block;padding:13px 26px;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:18px;font-weight:bold;color:#0c216e;text-decoration:none;border-radius:8px;">Priorizar y asignar</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="px" style="padding:24px 40px 28px 40px;border-top:1px solid #e6e9f2;background:#f7f8fb;" align="center">
+            <p style="margin:0 0 10px 0;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:11px;line-height:14px;letter-spacing:2px;text-transform:uppercase;color:#8a92ad;">
+              powered by
+            </p>
+            <img src="{{url_assets}}/mundana-studio-logo.png" width="190" height="27" alt="Mundana Studio" style="width:190px;height:27px;margin:0 auto;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:14px;font-weight:bold;color:#0c216e;">
+            <p style="margin:20px 0 0 0;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#8a92ad;">
+              Aviso interno de Montaigne Fix · Colegio Montaigne de Sevilla.<br>
+              Contiene datos personales del solicitante: no lo reenvíes fuera del equipo de gestión.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+
+    </td>
+  </tr>
+</table>
+</body>
+</html>
