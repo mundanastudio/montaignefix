@@ -5,7 +5,7 @@ import { Card } from "../components/ui/Card"
 import { Input, Textarea } from "../components/ui/Field"
 import { Modal } from "../components/ui/Modal"
 import { rgpdText } from "../content/rgpd"
-import { LIMITS, PHOTO_WARNING, RATE_LIMIT_NOTICE, validateTicket } from "../domain/ticketRules"
+import { LIMITS, PHOTO_WARNING, RATE_LIMIT_NOTICE, skipsRateLimit, validateTicket } from "../domain/ticketRules"
 import { createTicket, NetworkError } from "../lib/api"
 import { compressImage } from "../lib/compressImage"
 import styles from "./RequestForm.module.css"
@@ -238,7 +238,7 @@ export function RequestForm() {
             )}
           </div>
 
-          <Alert tone="info">{RATE_LIMIT_NOTICE}</Alert>
+          {!skipsRateLimit(fields.email) && <Alert tone="info">{RATE_LIMIT_NOTICE}</Alert>}
 
           {formError && (
             <Alert tone="error" title="No se ha enviado">

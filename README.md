@@ -8,7 +8,7 @@ La web es un sitio estático (React, Vite, TypeScript). La base de datos, las fo
 
 | Quién | Dónde | Qué hace |
 |---|---|---|
-| Profesor | `/` | Abre el parte. Sin contraseña. Como máximo 3 partes cada 24 horas con el mismo email. |
+| Profesor | `/` | Abre el parte. Sin contraseña. Como máximo 3 partes cada 24 horas con el mismo email. Fran y Curro no tienen ese tope. |
 | Fran y Curro | `/gestion` | Asignan, priorizan, compran materiales, cierran, reabren, rechazan o marcan duplicado. Cada uno entra con su contraseña. |
 | Fran, Agustín y Andrés | `/equipo` | PIN de 4 cifras, el mismo para los tres, y luego eligen su nombre. Trabajan solo las tareas que tienen asignadas. |
 

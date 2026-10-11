@@ -99,12 +99,18 @@ Deno.serve(async (req) => {
   })
   const db = admin.schema("montaigne_fix")
 
-  const { data: fran, error: franError } = await db.from("staff").select("email").eq("slug", "fran").maybeSingle()
-  if (franError) {
-    console.error("staff", franError.code)
+  const { data: managers, error: managerError } = await db
+    .from("staff")
+    .select("email")
+    .eq("is_manager", true)
+    .eq("active", true)
+  if (managerError) {
+    console.error("staff", managerError.code)
     return json(500, { ok: false, message: "No se ha podido enviar el parte. Inténtalo de nuevo más tarde." })
   }
-  const exempt = typeof fran?.email === "string" && fran.email.toLowerCase() === email
+  const exempt = (managers ?? []).some(
+    (row) => typeof row.email === "string" && row.email.toLowerCase() === email,
+  )
 
   if (!exempt) {
     const since = new Date(Date.now() - WINDOW_MS).toISOString()

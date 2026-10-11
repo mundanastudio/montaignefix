@@ -14,6 +14,16 @@ export const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 export const RATE_LIMIT_NOTICE =
   "Con el mismo email puedes abrir hasta 3 partes cada 24 horas. Si llegas al límite, tendrás que esperar a que pasen 24 horas para abrir otro."
 
+/** Fran y Curro abren partes sin el tope de 24 horas. */
+const UNLIMITED_REQUESTERS = new Set([
+  "francisco.flores@grupomontaigne.com",
+  "curromena89@gmail.com",
+])
+
+export function skipsRateLimit(email: string): boolean {
+  return UNLIMITED_REQUESTERS.has(email.trim().toLowerCase())
+}
+
 export const PHOTO_WARNING = "No fotografíes a alumnos ni a otras personas. Fotografía solo el desperfecto."
 
 export interface TicketInput {
