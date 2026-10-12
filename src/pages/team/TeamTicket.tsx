@@ -3,8 +3,9 @@ import { useOutletContext, useParams } from "react-router-dom"
 import { Alert } from "../../components/ui/Alert"
 import { PriorityBadge, StatusBadge } from "../../components/ui/Badge"
 import { Button } from "../../components/ui/Button"
-import { Input, Textarea } from "../../components/ui/Field"
+import { Textarea } from "../../components/ui/Field"
 import { Spinner } from "../../components/ui/Spinner"
+import { Materials } from "../../components/Materials"
 import { eventLine, formatWhen, priorityLabel, statusLabel } from "../../domain/labels"
 import { Confirm } from "../admin/Confirm"
 import type { TeamContextValue } from "./TeamShell"
@@ -37,7 +38,6 @@ interface Material {
   description: string
   status: "pendiente" | "comprado"
   requestedBy: string
-  requestedById: string
   createdAt: string
   purchasedBy: string | null
   purchasedAt: string | null
@@ -78,16 +78,12 @@ export function TeamTicket() {
   const [events, setEvents] = useState<HistoryEvent[]>([])
   const [materials, setMaterials] = useState<Material[]>([])
   const [note, setNote] = useState("")
-  const [materialsText, setMaterialsText] = useState("")
   const [colleague, setColleague] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [dialog, setDialog] = useState<"resuelto" | "soltar" | "reasignar" | null>(null)
-  const [remove, setRemove] = useState<Material | null>(null)
-  const [edit, setEdit] = useState<Material | null>(null)
-  const [editText, setEditText] = useState("")
   const codeRef = useRef(code)
   const loadSeq = useRef(0)
   codeRef.current = code
@@ -124,13 +120,9 @@ export function TeamTicket() {
     setTicket(null)
     setColleague("")
     setNote("")
-    setMaterialsText("")
     setError(null)
     setNotice(null)
     setDialog(null)
-    setRemove(null)
-    setEdit(null)
-    setEditText("")
     setBusy(false)
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -153,6 +145,7 @@ export function TeamTicket() {
     if (!result.ok) {
       setBusy(false)
       if (!result.expired) setError(result.message)
+      if (result.message.includes("Recarga la ficha")) await load()
       return false
     }
     await load()
@@ -160,18 +153,12 @@ export function TeamTicket() {
     setBusy(false)
     setNotice(okMessage)
     setDialog(null)
-    setRemove(null)
     return true
   }
 
   async function addNote(event: FormEvent) {
     event.preventDefault()
     if (await run("staff-add-note", { body: note }, "Observación guardada.")) setNote("")
-  }
-
-  async function addMaterials(event: FormEvent) {
-    event.preventDefault()
-    if (await run("staff-add-materials", { text: materialsText }, "Materiales enviados.")) setMaterialsText("")
   }
 
   if (loading || (ticket !== null && ticket.code !== code)) {
@@ -236,6 +223,20 @@ export function TeamTicket() {
           <p className={styles.muted}>{ticket.photoError ? "No se ha podido cargar la foto." : "Sin foto."}</p>
         )}
       </section>
+
+      <Materials
+        key={code}
+        items={materials}
+        busy={busy}
+        canMutate={!terminal}
+        canPurchase={false}
+        onAdd={(text) => run("staff-add-materials", { text }, "Materiales enviados.")}
+        onEdit={(id, description) => run("staff-edit-material", { id, description }, "Artículo actualizado.")}
+        onDelete={(id) => run("staff-delete-material", { id }, "Artículo borrado.")}
+      />
+      {!terminal && ticket.status !== "en_espera" && (
+        <p className={styles.hint}>Si no puedes seguir sin el material, pásala a En espera. No se cambia sola.</p>
+      )}
 
       {!ticket.mine && !ticket.assigneeId && !terminal && (
         <Button size="lg" fullWidth disabled={busy} onClick={() => void run("staff-assign", { mode: "tomar" }, "Te has asignado esta incidencia.")}>
@@ -325,57 +326,6 @@ export function TeamTicket() {
       </div>
 
       <section className={styles.block}>
-        <h3>Materiales</h3>
-        {materials.length === 0 && <p className={styles.muted}>Todavía no hay materiales pedidos.</p>}
-        {materials.map((item) => (
-          <div key={item.id} className={styles.item}>
-            <p className={styles.noteLine}>
-              <span>{item.description}</span>
-              <span className={styles.noteWhen}>•</span>
-              <span className={item.status === "pendiente" ? styles.statePending : styles.stateBought}>
-                {item.status === "pendiente" ? "Pendiente" : "Comprado"}
-              </span>
-              <span className={styles.noteWhen}>• {formatWhen(item.status === "pendiente" ? item.createdAt : item.purchasedAt)}</span>
-            </p>
-            {ticket.mine && item.status === "pendiente" && item.requestedById === actorId && (
-              <div className={styles.itemActions}>
-                <Button
-                  variant="secondary"
-                  disabled={busy}
-                  onClick={() => {
-                    setEdit(item)
-                    setEditText(item.description)
-                  }}
-                >
-                  Editar
-                </Button>
-                <Button variant="danger" disabled={busy} onClick={() => setRemove(item)}>
-                  Borrar
-                </Button>
-              </div>
-            )}
-          </div>
-        ))}
-        {ticket.mine && (
-          <form className={styles.stack} onSubmit={(event) => void addMaterials(event)}>
-            <Textarea
-              label="Materiales que hay que comprar"
-              required
-              hint="Un artículo por línea."
-              value={materialsText}
-              onChange={(event) => setMaterialsText(event.target.value)}
-            />
-            {ticket.status !== "en_espera" && (
-              <p className={styles.hint}>Si no puedes seguir sin el material, pásala a En espera. No se cambia sola.</p>
-            )}
-            <Button type="submit" disabled={busy || materialsText.trim() === ""}>
-              Enviar
-            </Button>
-          </form>
-        )}
-      </section>
-
-      <section className={styles.block}>
         <h3>Historial</h3>
         <ol className={styles.timeline}>
           {events.map((item) => (
@@ -420,32 +370,6 @@ export function TeamTicket() {
         <p>
           Vas a pasar {ticket.code} a {colleagueName}.
         </p>
-      </Confirm>
-      <Confirm
-        open={edit !== null}
-        title="Editar material"
-        acceptLabel="Guardar"
-        busy={busy}
-        onCancel={() => setEdit(null)}
-        onAccept={() => {
-          if (editText.trim() === "") return
-          void run("staff-edit-material", { id: edit?.id, description: editText }, "Artículo actualizado.").then((ok) => {
-            if (ok) setEdit(null)
-          })
-        }}
-      >
-        <Input label="Texto" required maxLength={200} value={editText} onChange={(event) => setEditText(event.target.value)} />
-      </Confirm>
-      <Confirm
-        open={remove !== null}
-        title="Borrar material"
-        acceptLabel="Borrar"
-        danger
-        busy={busy}
-        onCancel={() => setRemove(null)}
-        onAccept={() => void run("staff-delete-material", { id: remove?.id }, "Artículo borrado.")}
-      >
-        <p>Vas a borrar «{remove?.description}». Solo se puede si sigue pendiente y lo pediste tú.</p>
       </Confirm>
     </div>
   )

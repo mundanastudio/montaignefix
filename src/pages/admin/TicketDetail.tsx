@@ -3,10 +3,11 @@ import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 
 import { Alert } from "../../components/ui/Alert"
 import { PriorityBadge, StatusBadge } from "../../components/ui/Badge"
 import { Button } from "../../components/ui/Button"
-import { Input, Textarea } from "../../components/ui/Field"
+import { Textarea } from "../../components/ui/Field"
 import { Spinner } from "../../components/ui/Spinner"
 import { eventLine, formatWhen, priorityLabel, statusLabel } from "../../domain/labels"
 import type { AdminContextValue } from "./AdminShell"
+import { Materials } from "../../components/Materials"
 import { Confirm } from "./Confirm"
 import styles from "./Admin.module.css"
 
@@ -83,16 +84,12 @@ export function TicketDetail() {
   const [materials, setMaterials] = useState<Material[]>([])
   const [assignee, setAssignee] = useState("")
   const [note, setNote] = useState("")
-  const [materialsText, setMaterialsText] = useState("")
   const [duplicateCode, setDuplicateCode] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [dialog, setDialog] = useState<"cerrar" | "reabrir" | "rechazar" | "duplicado" | "borrar" | null>(null)
-  const [remove, setRemove] = useState<Material | null>(null)
-  const [edit, setEdit] = useState<Material | null>(null)
-  const [editText, setEditText] = useState("")
   const codeRef = useRef(code)
   const loadSeq = useRef(0)
   codeRef.current = code
@@ -125,14 +122,10 @@ export function TicketDetail() {
     setTicket(null)
     setAssignee("")
     setNote("")
-    setMaterialsText("")
     setDuplicateCode("")
     setError(null)
     setNotice(null)
     setDialog(null)
-    setRemove(null)
-    setEdit(null)
-    setEditText("")
     setBusy(false)
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -155,6 +148,7 @@ export function TicketDetail() {
     if (!result.ok) {
       setBusy(false)
       if (!result.expired) setError(result.message)
+      if (result.message.includes("Recarga la ficha")) await load()
       return false
     }
     await load()
@@ -162,7 +156,6 @@ export function TicketDetail() {
     setBusy(false)
     setNotice(okMessage)
     setDialog(null)
-    setRemove(null)
     return true
   }
 
@@ -186,11 +179,6 @@ export function TicketDetail() {
     if (saved) setNote("")
   }
 
-  async function addMaterials(event: FormEvent) {
-    event.preventDefault()
-    const saved = await run("admin-add-materials", { text: materialsText }, "Materiales añadidos a la lista.")
-    if (saved) setMaterialsText("")
-  }
 
   if (loading || (ticket !== null && ticket.code !== code)) {
     return (
@@ -270,6 +258,19 @@ export function TicketDetail() {
           </p>
         )}
       </section>
+
+      <Materials
+        key={code}
+        items={materials}
+        busy={busy}
+        canMutate
+        canPurchase
+        onAdd={(text) => run("admin-add-materials", { text }, "Materiales añadidos a la lista.")}
+        onEdit={(id, description) => run("admin-edit-material", { id, description }, "Artículo actualizado.")}
+        onDelete={(id) => run("admin-delete-material", { id }, "Artículo borrado.")}
+        onBuy={(id) => run("admin-mark-purchased", { ids: [id] }, "1 artículo marcado como comprado.")}
+        onUnmark={(id) => run("admin-unmark-purchased", { id }, "El artículo vuelve a estar pendiente.")}
+      />
 
       <section className={styles.block}>
         <h3>Prioridad</h3>
@@ -400,53 +401,6 @@ export function TicketDetail() {
       </div>
 
       <section className={styles.block}>
-        <h3>Materiales</h3>
-        <p className={styles.hint}>Una línea, un artículo. Si el parte no puede avanzar sin el material, pásalo a En espera.</p>
-        {materials.length === 0 && <p className={styles.muted}>Todavía no hay materiales pedidos.</p>}
-        {materials.map((item) => (
-          <div key={item.id} className={styles.item}>
-            <p className={styles.noteLine}>
-              <span>{item.description}</span>
-              <span className={styles.noteWhen}>•</span>
-              <span className={item.status === "pendiente" ? styles.statePending : styles.stateBought}>
-                {item.status === "pendiente" ? "Pendiente" : "Comprado"}
-              </span>
-              <span className={styles.noteWhen}>• {formatWhen(item.status === "pendiente" ? item.createdAt : item.purchasedAt)}</span>
-            </p>
-            {item.status === "pendiente" && (
-              <div className={styles.itemActions}>
-                <Button
-                  variant="secondary"
-                  disabled={busy}
-                  onClick={() => {
-                    setEdit(item)
-                    setEditText(item.description)
-                  }}
-                >
-                  Editar
-                </Button>
-                <Button variant="danger" disabled={busy} onClick={() => setRemove(item)}>
-                  Borrar
-                </Button>
-              </div>
-            )}
-          </div>
-        ))}
-        <form className={styles.stack} onSubmit={(event) => void addMaterials(event)}>
-          <Textarea
-            label="Materiales que hay que comprar"
-            required
-            hint="Un artículo por línea, hasta 200 caracteres."
-            value={materialsText}
-            onChange={(event) => setMaterialsText(event.target.value)}
-          />
-          <Button type="submit" disabled={busy || materialsText.trim() === ""}>
-            Enviar
-          </Button>
-        </form>
-      </section>
-
-      <section className={styles.block}>
         <h3>Historial</h3>
         <ol className={styles.timeline}>
           {events.map((item) => (
@@ -515,32 +469,6 @@ export function TicketDetail() {
         <p>
           Vas a marcar {ticket.code} como duplicado de {duplicateCode.trim().toUpperCase()}.
         </p>
-      </Confirm>
-      <Confirm
-        open={edit !== null}
-        title="Editar material"
-        acceptLabel="Guardar"
-        busy={busy}
-        onCancel={() => setEdit(null)}
-        onAccept={() => {
-          if (editText.trim() === "") return
-          void run("admin-edit-material", { id: edit?.id, description: editText }, "Artículo actualizado.").then((ok) => {
-            if (ok) setEdit(null)
-          })
-        }}
-      >
-        <Input label="Texto" required maxLength={200} value={editText} onChange={(event) => setEditText(event.target.value)} />
-      </Confirm>
-      <Confirm
-        open={remove !== null}
-        title="Borrar material"
-        acceptLabel="Borrar"
-        danger
-        busy={busy}
-        onCancel={() => setRemove(null)}
-        onAccept={() => void run("admin-delete-material", { id: remove?.id }, "Artículo borrado.")}
-      >
-        <p>Vas a borrar «{remove?.description}». Desaparecerá y no se puede recuperar.</p>
       </Confirm>
     </div>
   )

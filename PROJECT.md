@@ -54,20 +54,22 @@ El solicitante **no ve el estado** de su parte: solo recibe el email final.
   - sus **observaciones internas**.
 - Pueden **asignarse** una incidencia sin asignar, **quitarse** una que tengan y **reasignarla** a otro compañero.
 - Al marcar **Resuelto** se guarda la fecha de resolución y se avisa a Fran.
-- En cada tarea asignada: caja **"Materiales que hay que comprar"** con botón **Enviar** (ver 3.4).
+- **Materiales** (ver 3.4): cualquier técnico puede añadir, editar y borrar artículos pendientes en **cualquier** parte abierto. En **Cerrado**, **Rechazado** o **Duplicado** el equipo solo los ve; no hay botones y el servidor rechaza cambios. Marcar comprado / volver a pendiente es solo de Gestión.
 
 ### 3.4 Lista de la compra
 
-**Desde el panel del equipo** (solo en tareas asignadas a la persona seleccionada):
-- Caja de texto "Materiales que hay que comprar" + botón **Enviar**.
-- **Cada línea del texto se convierte en un artículo** independiente (p. ej. "silicona blanca" y "2 bisagras 35 mm" en líneas separadas = 2 artículos). Se ignoran líneas vacías y se recortan espacios. Límite razonable de longitud por línea (p. ej. 200 caracteres).
-- Tras enviar, la caja se vacía y debajo aparece la lista de materiales pedidos para esa tarea con su estado: **Pendiente** o **Comprado (fecha)**.
-- El técnico puede **borrar un artículo suyo mientras esté Pendiente** (para corregir errores). Una vez comprado no se puede tocar.
+**Desde la ficha** (Gestión y Equipo), debajo de los datos del parte, una sola columna:
+- Lista con descripción, quién lo pidió, fecha y estado **Pendiente** o **Comprado** (con fecha). Vacío: «Sin materiales. Pulsa + para añadir uno.»
+- Botones de icono (lápiz / papelera, ≥ 44 px, con `aria-label`) para editar y borrar un artículo **pendiente**. Edición en la misma línea (Guardar / Cancelar, Enter / Escape). Borrar pide confirmación: *¿Borrar «silicona blanca»?*
+- **+ Añadir material**: una línea = un artículo; al pegar varias líneas se crean varios (vacías se ignoran, máximo 200 caracteres por línea, 40 de una vez).
+- **Gestión** puede marcar como comprado (el mismo modal que la lista de la compra) y **Volver a pendiente**.
+- En **Cerrado / Rechazado / Duplicado** el equipo no ve esos botones; Gestión sí puede seguir añadiendo, editando y borrando.
+- Si se edita o borra un artículo que entretanto se ha comprado o ya no existe, el servidor responde *«Este material ya se ha comprado o se ha borrado. Recarga la ficha.»* y la pantalla se actualiza.
 - Es independiente del estado de la tarea: no la cambia automáticamente. Se sugiere (sin obligar) pasar la tarea a **En espera** si no puede avanzar sin el material.
 
 **Desde el panel del gerente — sección "Lista de la compra":**
 - Muestra todos los artículos **pendientes**, agrupados por incidencia: código MF-XXXX, reparación y lugar, y para cada artículo quién lo pidió y cuándo. Enlace a la ficha de la incidencia.
-- Fran puede añadir artículos también desde la ficha de cualquier incidencia.
+- Fran puede añadir, editar, borrar y marcar comprados también desde la ficha de cualquier incidencia.
 - Fran selecciona uno o varios artículos (casillas, con "seleccionar todos" por incidencia) y pulsa **Marcar como comprado**.
 - **Popup de confirmación** (modal propio de la app, no `confirm()` del navegador): *"Vas a marcar N artículo(s) como comprados. Al aceptar, desaparecerán de la lista de la compra."* Botones **Cancelar** / **Aceptar**.
 - Al aceptar, los artículos **desaparecen de la lista** pero **no se borran** de la base de datos: se marcan como comprados con fecha y autor (borrado lógico). Así el técnico ve que ya está comprado y queda en el historial e informes.
@@ -79,14 +81,13 @@ El solicitante **no ve el estado** de su parte: solo recibe el email final.
 
 **Estados:** `Nuevo` → `Asignado` → `En curso` → `En espera` (material/proveedor) → `Resuelto` → `Cerrado`. Además: `Rechazado` y `Duplicado`.
 
-| Acción | Gerente | Técnico (solo sus tareas) |
+| Acción | Gerente | Técnico |
 |---|---|---|
-| Asignar / reasignar | ✅ | ✅ (asignarse, quitarse, pasarla a otro) |
+| Asignar / reasignar | ✅ | ✅ (asignarse, quitarse, pasarla a otro; solo sus tareas) |
 | Prioridad | ✅ | ❌ |
-| En curso / En espera / Resuelto | ✅ | ✅ |
+| En curso / En espera / Resuelto | ✅ | ✅ (solo sus tareas) |
 | Cerrar / Reabrir / Rechazar / Duplicado | ✅ | ❌ |
-| Añadir materiales a la lista de la compra | ✅ (cualquier incidencia) | ✅ (solo sus tareas) |
-| Borrar un material pendiente | ✅ | ✅ (solo los que pidió él) |
+| Añadir / editar / borrar materiales | ✅ (cualquier incidencia, también cerrada) | ✅ (cualquier incidencia abierta; en Cerrado / Rechazado / Duplicado solo lectura) |
 | Marcar materiales como comprados / volver a pendiente | ✅ | ❌ |
 
 Reabrir una incidencia cerrada la devuelve a `Asignado` (si tiene técnico) o `Nuevo`.
@@ -116,7 +117,7 @@ Tablas mínimas (ajusta nombres si lo ves mejor, pero justifícalo):
   - `purchased_by` → `staff.id` (nullable), `purchased_at` (nullable)
   - Restricción: si `status = 'comprado'` entonces `purchased_at` y `purchased_by` no son nulos; si `pendiente`, ambos nulos.
   - Índices: `(status, created_at)` para la lista de Fran y `(ticket_id)` para la ficha.
-  - Cada alta, compra, vuelta a pendiente o borrado se registra en `ticket_events` (tipo `material_solicitado`, `material_comprado`, `material_repuesto`, `material_borrado`).
+  - Cada alta, edición, compra, vuelta a pendiente o borrado se registra en `ticket_events` (tipo `material_solicitado`, `material_editado`, `material_comprado`, `material_repuesto`, `material_borrado`).
   - El borrado de un artículo pendiente sí es físico (era un error); el resto es borrado lógico.
 
 **Fotos:** Supabase Storage, bucket **privado**. Comprimir en el navegador antes de subir (máx. ~1600 px de lado, JPEG ~0,7, objetivo < 500 KB). En la base de datos solo se guarda la ruta. Se muestran en los paneles con URLs firmadas temporales. **Nunca base64 en la base de datos.**
@@ -125,7 +126,7 @@ Tablas mínimas (ajusta nombres si lo ves mejor, pero justifícalo):
 - RLS activado en **todas** las tablas y en el bucket.
 - El navegador **no puede leer ni escribir directamente** ninguna tabla. Todo pasa por **Supabase Edge Functions** que usan la service role key (que nunca llega al navegador):
   - `create-ticket` (público): valida, sube la foto, crea el parte y avisa a Fran.
-  - `staff-*` (requiere token de sesión del PIN + persona seleccionada). Incluye `staff-add-materials` (comprueba que la tarea está asignada a quien envía; divide por líneas e inserta todo en una transacción) y `staff-delete-material` (solo pendientes y pedidos por él).
+  - `staff-*` (requiere token de sesión del PIN + persona seleccionada). Incluye `staff-add-materials` (cualquier parte que no esté cerrado, rechazado o duplicado; divide por líneas e inserta todo en una transacción) y `staff-edit-material` / `staff-delete-material` (artículos pendientes de cualquier parte abierto; si ya está comprado o no existe: «Este material ya se ha comprado o se ha borrado. Recarga la ficha.»).
   - `admin-*` (requiere token de sesión de la contraseña). Incluye `admin-shopping-list`, `admin-add-materials`, `admin-mark-purchased` (recibe una lista de ids; solo actualiza los que siguen pendientes, en una transacción, y devuelve cuántos cambió) y `admin-unmark-purchased`.
 - PIN y contraseñas validados en el servidor con hash; sesión con token firmado y caducidad (p. ej. 30 días equipo, 7 días gerente).
 - Límite básico de intentos de PIN/contraseña.
