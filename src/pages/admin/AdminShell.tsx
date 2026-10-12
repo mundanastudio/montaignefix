@@ -205,11 +205,26 @@ export function AdminShell() {
         <Button variant="secondary" disabled={reporting} onClick={() => void sendReport()}>
           {reporting ? "Enviando…" : "Enviar informe"}
         </Button>
-        <Button variant="ghost" disabled={closingSessions} onClick={() => setConfirmClose(true)}>
-          Cerrar sesiones del equipo
-        </Button>
       </nav>
-      {reportNotice && <Alert tone={reportNotice.startsWith("Informe de los últimos") || reportNotice.startsWith("Sesiones del equipo") ? "success" : "error"}>{reportNotice}</Alert>}
+      {reportNotice && (
+        <Alert
+          tone={
+            reportNotice.startsWith("Informe de los últimos") || reportNotice.startsWith("Sesiones del equipo")
+              ? "success"
+              : "error"
+          }
+        >
+          {reportNotice}
+        </Alert>
+      )}
+      <Outlet context={context} />
+      {location.pathname === "/gestion" && (
+        <div className={styles.sessionLock}>
+          <Button variant="danger" disabled={closingSessions} onClick={() => setConfirmClose(true)}>
+            Cerrar sesiones del equipo
+          </Button>
+        </div>
+      )}
       <Confirm
         open={confirmClose}
         title="Cerrar todas las sesiones del equipo"
@@ -221,7 +236,6 @@ export function AdminShell() {
       >
         El equipo tendrá que volver a introducir el PIN. Tu sesión de gestión sigue abierta.
       </Confirm>
-      <Outlet context={context} />
     </div>
   )
 }

@@ -452,6 +452,11 @@
   box-shadow: var(--shadow-md);
 }
 
+.sessionLock {
+  display: flex;
+  justify-content: flex-start;
+}
+
 .back {
   color: var(--color-heading);
   font-weight: var(--font-weight-semibold);
