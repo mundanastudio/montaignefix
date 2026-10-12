@@ -180,7 +180,7 @@ Las plantillas HTML y de texto ya están diseñadas en la carpeta `emails/` (rec
 
 - Código en **GitHub**.
 - Frontend **estático** (React + Vite + TypeScript o similar). Toda la lógica de servidor en **Supabase Edge Functions**. Así el frontend no guarda ningún secreto y puede publicarse en cualquier hosting estático.
-- Hosting: **Cloudflare Pages** conectado al repo de GitHub (gratis, permite uso por organizaciones, no se "duerme"). Alternativa: Vercel (su plan gratuito es solo para uso personal no comercial). El build (`npm run build`, salida `dist`) está comprobado. La cuenta de Cloudflare y la conexión del repo las hace el propietario; los pasos están en `README.md`.
+- Hosting: **Cloudflare Pages** (`https://montaignefix.pages.dev`) y **Vercel** (`https://montaignefix.vercel.app`), ambos desde el mismo repo. El build es `npm run build`, salida `dist`. En Cloudflare la SPA la resuelve Pages. En Vercel, `vercel.json` reescribe a `index.html` cualquier ruta que no sea un archivo, excepto `/assets/` y `/email/` (ahí un archivo que no exista da 404). El plan gratuito de Vercel es solo para uso personal no comercial. Los pasos de Cloudflare están en `README.md`.
 - Carpeta local: `C:\Users\rs07313\Desktop\LLM Projects\Montaigne Fix`, añadida al workspace "LLM Projects".
 - `.env.example` documentado; ningún secreto en el repo.
 - El usuario ya tiene un GitHub Action que evita que Supabase pause el proyecto por inactividad.
