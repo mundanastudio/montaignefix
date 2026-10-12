@@ -156,6 +156,10 @@
   color: var(--color-heading);
 }
 
+.dateFilter {
+  display: none;
+}
+
 .control {
   width: 100%;
   min-height: var(--touch-target);
@@ -460,10 +464,6 @@
 }
 
 @media (min-width: 900px) {
-  .dateFilter {
-    display: none;
-  }
-
   .cards {
     display: none;
   }

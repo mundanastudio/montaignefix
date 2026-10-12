@@ -13,14 +13,50 @@ function toBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
   })
 }
 
+async function bitmapFromImage(file: File): Promise<ImageBitmap> {
+  const url = URL.createObjectURL(file)
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => resolve(img)
+      img.onerror = () => reject(new Error("decode"))
+      img.src = url
+    })
+    return await createImageBitmap(image)
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
+async function bitmapFromHeic(file: File): Promise<ImageBitmap> {
+  const { default: heic2any } = await import("heic2any")
+  const result = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.8 })
+  const jpeg = Array.isArray(result) ? result[0] : result
+  if (!(jpeg instanceof Blob)) throw new Error("decode")
+  return await createImageBitmap(jpeg)
+}
+
+async function decode(file: File): Promise<ImageBitmap> {
+  try {
+    return await createImageBitmap(file)
+  } catch {
+    try {
+      return await bitmapFromImage(file)
+    } catch {
+      return await bitmapFromHeic(file)
+    }
+  }
+}
+
 /**
  * Reduce la foto a como máximo 1600 px de lado, JPEG, por debajo de 500 KB.
  * Al pasarla por un canvas se elimina el EXIF (ubicación, modelo de móvil…).
+ * Una foto HEIC del iPhone se convierte a JPEG antes de salir del navegador.
  */
 export async function compressImage(file: File): Promise<Blob> {
   let bitmap: ImageBitmap
   try {
-    bitmap = await createImageBitmap(file)
+    bitmap = await decode(file)
   } catch {
     throw new Error("No puedo usar esta foto. Hazla de nuevo o elige una imagen JPG o PNG.")
   }

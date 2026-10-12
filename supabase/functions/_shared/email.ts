@@ -23,10 +23,7 @@ import {
 } from "./email-render.mjs"
 import { db } from "./http.ts"
 
-type Kind = "nuevo" | "recibido" | "resuelto" | "cerrado" | "prueba" | "informe"
-
-/** Copia temporal de lo que recibe Fran. Quitar esta constante al terminar las pruebas. */
-const COPIA_DE_FRAN = "soportemundanastudio@mundana.us"
+type Kind = "nuevo" | "recibido" | "resuelto" | "cerrado" | "prueba" | "informe" | "aviso"
 
 interface Outgoing {
   kind: Kind
@@ -403,11 +400,6 @@ async function rendered(input: {
     photoName: input.photoName,
   }
   const primary = await send({ ...message, to: input.to })
-  const fran = (await managerEmail()).trim().toLowerCase()
-  const copy = COPIA_DE_FRAN.trim().toLowerCase()
-  if (fran && input.to.trim().toLowerCase() === fran && copy !== fran) {
-    await send({ ...message, to: COPIA_DE_FRAN })
-  }
   return primary
 }
 
@@ -620,12 +612,15 @@ export async function sendReport(input: {
     pdfName: input.pdfName,
   }
   const primary = await send({ ...message, to: input.to })
-  const fran = (await managerEmail()).trim().toLowerCase()
-  const copy = COPIA_DE_FRAN.trim().toLowerCase()
-  if (fran && input.to.trim().toLowerCase() === fran && copy !== fran) {
-    await send({ ...message, to: COPIA_DE_FRAN })
-  }
   return primary
+}
+
+export async function sendNotice(to: string, subject: string, text: string): Promise<void> {
+  const html = `<p style="font-family:Georgia,serif;font-size:16px;color:#1a1a1a;">${text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")}</p>`
+  await send({ kind: "aviso", to, subject, html, text })
 }
 
 export async function listEmails(): Promise<Array<Record<string, unknown>>> {

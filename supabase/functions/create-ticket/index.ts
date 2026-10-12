@@ -1,13 +1,19 @@
 // Formulario público. verify_jwt = false: no hay sesión, la anon key solo llama aquí.
 // La service role no sale de esta función. El aviso a Fran no impide crear el parte.
 import { createClient } from "npm:@supabase/supabase-js@2"
-import { notifyNew } from "../_shared/email.ts"
+import { notifyNew, sendNotice } from "../_shared/email.ts"
+import { clientIp } from "../_shared/http.ts"
 
 const LIMITS = { name: 120, email: 254, description: 2000, location: 200, notes: 2000 }
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const MAX_PHOTO_BYTES = 1_500_000
 const RATE_LIMIT = 3
+const HOUR_LIMIT = 10
+const DAY_IP_LIMIT = 30
+const DAY_GLOBAL_LIMIT = 100
 const WINDOW_MS = 24 * 60 * 60 * 1000
+const HOUR_MS = 60 * 60 * 1000
+const BUSY = "Has enviado muchos partes seguidos. Inténtalo de nuevo en un rato."
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -101,7 +107,7 @@ Deno.serve(async (req) => {
 
   const { data: managers, error: managerError } = await db
     .from("staff")
-    .select("email")
+    .select("slug, email")
     .eq("is_manager", true)
     .eq("active", true)
   if (managerError) {
@@ -133,6 +139,37 @@ Deno.serve(async (req) => {
           `Con este email ya hay ${RATE_LIMIT} partes en las últimas 24 horas. ` +
           `Podrás abrir otro el ${madrid(retryAt)}. Hasta entonces no se puede enviar otro parte.`,
       })
+    }
+
+    const ip = clientIp(req)
+    const dayAgo = new Date(Date.now() - WINDOW_MS).toISOString()
+    const hourAgo = new Date(Date.now() - HOUR_MS).toISOString()
+    const hour = await db.from("submission_ips").select("id", { count: "exact", head: true }).eq("ip", ip).gte("created_at", hourAgo)
+    const ipDay = await db.from("submission_ips").select("id", { count: "exact", head: true }).eq("ip", ip).gte("created_at", dayAgo)
+    const globalDay = await db.from("submission_ips").select("id", { count: "exact", head: true }).gte("created_at", dayAgo)
+    if (hour.error || ipDay.error || globalDay.error) {
+      console.error("rate-ip", hour.error?.code ?? ipDay.error?.code ?? globalDay.error?.code ?? "error")
+      return json(500, { ok: false, message: "No se ha podido enviar el parte. Inténtalo de nuevo más tarde." })
+    }
+    if ((globalDay.count ?? 0) >= DAY_GLOBAL_LIMIT) {
+      const since = dayAgo
+      const { data: sent } = await db.from("security_notices").select("id").eq("kind", "ticket_flood").gte("created_at", since).limit(1)
+      if ((sent ?? []).length === 0) {
+        await db.from("security_notices").insert({ kind: "ticket_flood" })
+        const fran = (managers ?? []).find((row) => row.slug === "fran" && typeof row.email === "string")
+        const to = typeof fran?.email === "string" ? fran.email : ""
+        if (to) {
+          await sendNotice(
+            to,
+            "Montaigne Fix: demasiados partes en un día",
+            "Se han abierto más de 100 partes en un día. Los envíos nuevos quedan parados un rato, salvo los de Fran y Curro.",
+          )
+        }
+      }
+      return json(429, { ok: false, message: BUSY })
+    }
+    if ((hour.count ?? 0) >= HOUR_LIMIT || (ipDay.count ?? 0) >= DAY_IP_LIMIT) {
+      return json(429, { ok: false, message: BUSY })
     }
   }
 
@@ -176,5 +213,11 @@ Deno.serve(async (req) => {
     createdAt: typeof created?.created_at === "string" ? created.created_at : new Date().toISOString(),
     photo: photoBytes,
   })
+  if (!exempt) {
+    await db.from("submission_ips").insert({ ip: clientIp(req) })
+  }
+  const cutoff = new Date(Date.now() - 2 * WINDOW_MS).toISOString()
+  await db.from("submission_ips").delete().lt("created_at", cutoff)
+  await db.from("security_notices").delete().lt("created_at", cutoff)
   return json(200, { ok: true })
 })

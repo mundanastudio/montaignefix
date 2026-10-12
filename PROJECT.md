@@ -16,7 +16,7 @@ Herramienta web para abrir y gestionar **partes de reparación física** en el C
 |---|---|---|
 | Solicitante | Profesores y trabajadores del colegio | Formulario abierto, sin login |
 | Gerente / Admin | **Fran** (Francisco Flores, `Francisco.flores@grupomontaigne.com`) y **Curro** (`curromena89@gmail.com`) | Panel de gestión con **contraseña** (una por persona, para saber quién hizo cada cambio) |
-| Equipo de mantenimiento | **Fran, Agustín, Andrés** | Panel del equipo con **PIN de 4 dígitos** compartido + selector "¿Quién eres?" |
+| Equipo de mantenimiento | **Fran, Agustín, Andrés** | Panel del equipo con **PIN compartido** (4 dígitos; se puede pasar a 6) + selector "¿Quién eres?" |
 
 - Fran es a la vez gerente y miembro del equipo (se le pueden asignar tareas).
 - El PIN se introduce una vez por dispositivo y el nombre elegido se recuerda en ese dispositivo (con opción "Cambiar de persona").
@@ -165,7 +165,8 @@ Las plantillas HTML y de texto ya están diseñadas en la carpeta `emails/` (rec
 
 - Casilla obligatoria en el formulario con texto breve: responsable (Grupo Montaigne), finalidad (gestionar la reparación y avisar al solicitante), conservación (12 meses) y contacto para ejercer derechos. Dejar el texto en un archivo fácil de editar: **el texto legal definitivo lo dará el colegio**.
 - Aviso de no fotografiar personas (ver 3.1).
-- **Borrado automático**: incidencias cerradas, resueltas, rechazadas o duplicadas hace más de 12 meses → se borran con sus fotos, notas, materiales e historial. Se ejecuta **después** del informe anual, así ninguna se borra sin haber salido en un informe.
+- **Borrado automático**: solo las incidencias **resueltas** o **cerradas** hace más de 12 meses. Se borran con sus fotos, notas, materiales, historial y el registro de correos de ese parte (destinatario y asunto). No se borran las abiertas, sin asignar, en curso, en espera, rechazadas ni duplicadas, aunque haya pasado un año. El borrado se ejecuta **después** de un informe anual enviado bien, así ninguna se borra sin haber salido en un informe. Si el informe anual falla, se avisa a Curro y no se borra nada nuevo hasta que el informe salga.
+- Las IPs de intentos de acceso y de los topes del formulario se guardan como mucho 2 días.
 - `noindex` y `robots.txt` para que no aparezca en buscadores.
 
 ## 9. Diseño

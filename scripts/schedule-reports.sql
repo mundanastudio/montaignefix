@@ -1,7 +1,8 @@
 -- Programa el aviso horario. Solo envía cuando en Madrid son las 8:00 o más
 -- y el periodo de ese día todavía no se ha enviado. El secreto está en vault.
 create extension if not exists pg_cron;
-create extension if not exists pg_net;
+create schema if not exists extensions;
+create extension if not exists pg_net with schema extensions;
 
 do $$
 begin

@@ -20,8 +20,8 @@ if (!secret) {
   console.error("Falta MF_SECRET. Míralo en el README: no lo escribas en la misma línea del comando.")
   process.exit(1)
 }
-if (kind === "pin" && !/^\d{4}$/.test(secret)) {
-  console.error("El PIN tiene que ser exactamente 4 dígitos.")
+if (kind === "pin" && !/^(\d{4}|\d{6})$/.test(secret)) {
+  console.error("El PIN tiene que ser de 4 o de 6 dígitos.")
   process.exit(1)
 }
 if (kind === "password" && [...secret].length < 8) {

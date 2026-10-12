@@ -8,23 +8,23 @@ La web es un sitio estático (React, Vite, TypeScript). La base de datos, las fo
 
 | Quién | Dónde | Qué hace |
 |---|---|---|
-| Profesor | `/` | Abre el parte. Sin contraseña. Como máximo 3 partes cada 24 horas con el mismo email. Fran y Curro no tienen ese tope. |
+| Profesor | `/` | Abre el parte. Sin contraseña. Como máximo 3 partes cada 24 horas con el mismo email, 10 por hora y 30 por día desde la misma red. Si en un día se pasan de 100, se paran los envíos nuevos. Fran y Curro no tienen ese tope. |
 | Fran y Curro | `/gestion` | Asignan, priorizan, compran materiales, cierran, reabren, rechazan o marcan duplicado. Cada uno entra con su contraseña. |
-| Fran, Agustín y Andrés | `/equipo` | PIN de 4 cifras, el mismo para los tres, y luego eligen su nombre. Trabajan solo las tareas que tienen asignadas. |
+| Fran, Agustín y Andrés | `/equipo` | PIN compartido (4 cifras; se puede pasar a 6), el mismo para los tres, y luego eligen su nombre. Trabajan solo las tareas que tienen asignadas. |
 
 Un técnico puede pasar a En curso, En espera o Resuelto, dejar una nota y pedir materiales. No puede marcar nada como comprado ni tocar una tarea de otro. Si se equivoca de persona en el dispositivo, usa «Cambiar de persona».
 
 Al abrir un parte salen dos correos: el acuse al profesor y el aviso a Fran. Al resolver, Fran recibe otro. Al cerrar, el profesor recibe el de solucionado. Los logos de esos correos salen de la dirección pública del sitio (`APP_PUBLIC_URL/email/`).
 
-Cada miércoles a las 08:00 (hora de Madrid) Fran recibe el informe de los últimos 7 días, con PDF. El 1 de julio a las 08:00, Fran y Curro reciben el informe de los 12 meses anteriores. Después de un informe anual correcto, se borran los partes ya terminados (cerrado, resuelto, rechazado o duplicado) que tengan más de 12 meses y que ya hayan salido en un informe. El botón «Enviar informe» de Gestión manda el semanal en el momento y no sustituye al del miércoles.
+Cada miércoles a las 08:00 (hora de Madrid) Fran recibe el informe de los últimos 7 días, con PDF. El 1 de julio a las 08:00, Fran y Curro reciben el informe de los 12 meses anteriores. Después de un informe anual correcto, se borran solo los partes resueltos o cerrados que tengan más de 12 meses y que ya hayan salido en un informe. Los abiertos, en espera, rechazados y duplicados no se borran. Si el informe anual falla, Curro recibe un aviso y el borrado no avanza. El botón «Enviar informe» de Gestión manda el semanal en el momento y no sustituye al del miércoles.
 
 El número `MF-0001`, `MF-0002`… no se reutiliza, tampoco si se borra el parte.
 
-Mientras dure la prueba, los correos dirigidos a Fran también llegan a `soportemundanastudio@mundana.us`. El acuse y el de solucionado siguen yendo solo al profesor. Para quitar la copia, vacía `COPIA_DE_FRAN` en `supabase/functions/_shared/email.ts` y vuelve a desplegar las funciones de correo.
+Los correos van solo al solicitante, a Fran y, en el informe anual, también a Curro.
 
 ## Cambiar el PIN o una contraseña
 
-El PIN y las contraseñas no están en el repositorio. En el servidor solo hay un hash. Cinco fallos seguidos bloquean ese acceso 15 minutos.
+El PIN y las contraseñas no están en el repositorio. En el servidor solo hay un hash. Cinco fallos seguidos desde la misma IP bloquean ese acceso 15 minutos. Diez fallos del PIN en 15 minutos, vengan de donde vengan, bloquean solo el PIN. Diez fallos de contraseña bloquean solo la gestión. Al cambiar el hash, las sesiones de esa credencial dejan de valer. En Gestión, «Cerrar sesiones del equipo» hace lo mismo con el PIN sin cambiarlo.
 
 En PowerShell, desde la carpeta del proyecto. La comilla simple evita que PowerShell interprete `$` y otros signos:
 
@@ -34,14 +34,22 @@ $env:MF_SECRET = 'el pin o la contrasena nueva'
 node scripts/hash-secret.mjs pin
 ```
 
-Para una contraseña, el último argumento es `password` en lugar de `pin`. El PIN son exactamente 4 dígitos. La contraseña, al menos 8 caracteres. El comando imprime una sola línea que empieza por `pbkdf2_sha256$`. Esa línea es el hash. No la pegues en el chat ni en el repo.
+Para una contraseña, el último argumento es `password` en lugar de `pin`. El PIN son 4 dígitos, o 6 si `MF_PIN_LENGTH` y `VITE_PIN_LENGTH` valen `6`. La contraseña, al menos 8 caracteres. El comando imprime una sola línea que empieza por `pbkdf2_sha256$`. Esa línea es el hash. No la pegues en el chat ni en el repo.
 
 ```powershell
 npx supabase@latest secrets set MF_TEAM_PIN_HASH='pega-aqui-el-hash' --project-ref rnghppmuqbdpbkkljnsr
 Remove-Item Env:MF_SECRET
 ```
 
-Contraseña de Fran: `MF_ADMIN_PASSWORD_HASH_FRAN`. Contraseña de Curro: `MF_ADMIN_PASSWORD_HASH_CURRO`. Cada una se genera con `password` y se guarda en su secreto. El cambio vale en el siguiente intento de entrada; no hace falta volver a desplegar la web.
+Contraseña de Fran: `MF_ADMIN_PASSWORD_HASH_FRAN`. Contraseña de Curro: `MF_ADMIN_PASSWORD_HASH_CURRO`. Cada una se genera con `password` y se guarda en su secreto. Al guardar el hash nuevo, las sesiones de esa persona dejan de valer. No hace falta volver a desplegar la web.
+
+Para un PIN de 6 dígitos, el hash tiene que ser de 6 cifras y además:
+
+```powershell
+npx supabase@latest secrets set MF_PIN_LENGTH=6 --project-ref rnghppmuqbdpbkkljnsr
+```
+
+En Cloudflare y en Vercel, la variable de build `VITE_PIN_LENGTH` también tiene que valer `6`, y hay que volver a publicar la web. Sin eso, el teclado sigue pidiendo 4 cifras.
 
 ## Cambiar el remitente
 

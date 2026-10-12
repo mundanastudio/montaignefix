@@ -6,7 +6,12 @@ Deno.serve((req) =>
     const payload = await requireToken(req, ["team", "admin"])
     const staff = await loadStaff(text(payload.sub))
     const allowed = payload.typ === "team" ? staff?.is_technician : staff?.is_manager
-    if (!staff || !allowed) return json(401, { ok: false, message: "La sesión ha caducado. Vuelve a entrar." })
+    if (!staff || !allowed) {
+      const message = payload.typ === "admin"
+        ? "Tu sesión ha caducado, vuelve a introducir la contraseña."
+        : "Tu sesión ha caducado, vuelve a introducir el PIN."
+      return json(401, { ok: false, message })
+    }
     return json(200, {
       ok: true,
       session: { kind: payload.typ, slug: staff.slug, name: staff.name },

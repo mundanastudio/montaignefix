@@ -8,6 +8,7 @@ import { Spinner } from "../../components/ui/Spinner"
 import { adminPost, type AdminResponse } from "../../lib/adminApi"
 import { adminToken, clearAdmin, currentSession, loginAdmin, type Person } from "../../lib/authApi"
 import access from "../Access.module.css"
+import { Confirm } from "./Confirm"
 import styles from "./Admin.module.css"
 
 const MANAGERS = [
@@ -33,6 +34,8 @@ export function AdminShell() {
   const [pendingCount, setPendingCount] = useState<number | null>(null)
   const [reporting, setReporting] = useState(false)
   const [reportNotice, setReportNotice] = useState<string | null>(null)
+  const [closingSessions, setClosingSessions] = useState(false)
+  const [confirmClose, setConfirmClose] = useState(false)
 
   useEffect(() => {
     if (!adminToken()) return
@@ -96,6 +99,19 @@ export function AdminShell() {
       return
     }
     setReportNotice(result.sent ? "Informe de los últimos 7 días enviado a Fran." : result.emailError ?? "No se ha podido enviar el informe.")
+  }
+
+  async function closeTeamSessions() {
+    setClosingSessions(true)
+    setReportNotice(null)
+    const result = await call<{ closed?: boolean }>("admin-close-team-sessions")
+    setClosingSessions(false)
+    setConfirmClose(false)
+    if (!result.ok) {
+      if (!result.expired) setReportNotice(result.message)
+      return
+    }
+    setReportNotice("Sesiones del equipo cerradas. Tendrán que volver a poner el PIN.")
   }
 
   function exit() {
@@ -189,8 +205,22 @@ export function AdminShell() {
         <Button variant="secondary" disabled={reporting} onClick={() => void sendReport()}>
           {reporting ? "Enviando…" : "Enviar informe"}
         </Button>
+        <Button variant="ghost" disabled={closingSessions} onClick={() => setConfirmClose(true)}>
+          Cerrar sesiones del equipo
+        </Button>
       </nav>
-      {reportNotice && <Alert tone={reportNotice.startsWith("Informe de los últimos") ? "success" : "error"}>{reportNotice}</Alert>}
+      {reportNotice && <Alert tone={reportNotice.startsWith("Informe de los últimos") || reportNotice.startsWith("Sesiones del equipo") ? "success" : "error"}>{reportNotice}</Alert>}
+      <Confirm
+        open={confirmClose}
+        title="Cerrar todas las sesiones del equipo"
+        acceptLabel="Cerrar sesiones"
+        danger
+        busy={closingSessions}
+        onCancel={() => setConfirmClose(false)}
+        onAccept={() => void closeTeamSessions()}
+      >
+        El equipo tendrá que volver a introducir el PIN. Tu sesión de gestión sigue abierta.
+      </Confirm>
       <Outlet context={context} />
     </div>
   )

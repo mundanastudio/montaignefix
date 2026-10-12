@@ -1,10 +1,9 @@
-import { sendReport } from "./email.ts"
+import { sendNotice, sendReport } from "./email.ts"
 import { escapeHtml, fechaLarga } from "./email-render.mjs"
 import { admin, db } from "./http.ts"
 import { buildReportPdf, type PdfTicket } from "./report-pdf.ts"
 
 const OPEN = ["nuevo", "asignado", "en_curso", "en_espera"]
-const TERMINAL = ["cerrado", "rechazado", "duplicado"]
 const STATUS: Record<string, string> = {
   nuevo: "Nuevo",
   asignado: "Asignado",
@@ -372,27 +371,55 @@ async function purge(now: Date): Promise<string> {
   const cutoff = new Date(now)
   cutoff.setUTCMonth(cutoff.getUTCMonth() - 12)
   const limit = Math.min(cutoff.getTime(), new Date(annualEnd).getTime())
+  const limitIso = new Date(limit).toISOString()
   const { data } = await db()
     .from("tickets")
     .select("id, photo_path, status, resolved_at, closed_at")
-    .in("status", ["resuelto", ...TERMINAL])
+    .in("status", ["resuelto", "cerrado"])
   const doomed = (data ?? []).filter((row) => {
     const stamp = row.status === "resuelto" ? row.resolved_at : row.closed_at
     return stamp && new Date(String(stamp)).getTime() <= limit
   })
+  let removed = 0
   for (const row of doomed) {
     if (typeof row.photo_path === "string" && row.photo_path) {
-      await admin().storage.from("montaigne-fix-fotos").remove([row.photo_path])
+      const { error: photoError } = await admin().storage.from("montaigne-fix-fotos").remove([row.photo_path])
+      if (photoError) {
+        console.error("purge-photo")
+        continue
+      }
     }
-    await db().from("tickets").delete().eq("id", row.id)
+    await db().from("email_log").delete().eq("ticket_id", row.id)
+    const { error } = await db().from("tickets").delete().eq("id", row.id)
+    if (!error) removed += 1
   }
-  return `Borradas ${doomed.length} incidencias.`
+  await db().from("email_log").delete().is("ticket_id", null).lte("created_at", limitIso)
+  return `Borradas ${removed} incidencias.`
+}
+
+async function forgetOldLimits(): Promise<void> {
+  const cutoff = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+  await db().from("login_attempts").delete().lt("created_at", cutoff)
+  await db().from("submission_ips").delete().lt("created_at", cutoff)
+  await db().from("security_notices").delete().lt("created_at", cutoff)
+}
+
+async function warnCurroAnnualFailed(): Promise<void> {
+  const { data } = await db().from("staff").select("email").eq("slug", "curro").eq("active", true).maybeSingle()
+  const to = typeof data?.email === "string" ? data.email.trim() : ""
+  if (!to) return
+  await sendNotice(
+    to,
+    "Montaigne Fix: el informe anual no se ha enviado",
+    "El informe anual no ha salido. Hasta que no se envíe bien, no se borran los partes resueltos o cerrados de más de 12 meses. Los que siguen abiertos no se borran.",
+  )
 }
 
 export async function runScheduledReports(): Promise<Record<string, unknown>> {
   const now = new Date()
   const clock = madridNow(now)
   if (clock.hour < 8) return { skipped: true }
+  await forgetOldLimits()
   const result: Record<string, unknown> = {}
   if (clock.month === "07" && clock.day === "01" && !(await alreadyOk("anual", clock.year))) {
     const end = now
@@ -410,6 +437,7 @@ export async function runScheduledReports(): Promise<Record<string, unknown>> {
       }
     }
     await markRun("anual", clock.year, end.toISOString(), ok, errors.join(" ") || `Enviado a ${recipients.length}`)
+    if (!ok) await warnCurroAnnualFailed()
     result.anual = ok
   }
   if (clock.weekday === "Wed" && !(await alreadyOk("semanal", clock.key))) {

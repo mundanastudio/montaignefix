@@ -8,6 +8,7 @@ import { HttpError, bearer, db, text } from "./http.ts"
 const encoder = new TextEncoder()
 const LOCK_MS = 15 * 60 * 1000
 const MAX_FAILURES = 5
+const GLOBAL_FAILURES = 10
 const DAY_MS = 24 * 60 * 60 * 1000
 
 export interface Staff {
@@ -18,10 +19,14 @@ export interface Staff {
   is_technician: boolean
 }
 
+type Credential = "pin" | "fran" | "curro"
+
 interface TokenPayload {
   typ: "gate" | "team" | "admin"
   sub?: string
   exp: number
+  ver: number
+  cred: Credential
 }
 
 const ORDER = ["fran", "agustin", "andres", "curro"]
@@ -79,9 +84,87 @@ function days(name: string, fallback: number): number {
   return Number.isFinite(value) && value > 0 && value <= 90 ? value : fallback
 }
 
+export function pinLength(): number {
+  return Deno.env.get("MF_PIN_LENGTH") === "6" ? 6 : 4
+}
+
+function credentialOf(typ: TokenPayload["typ"], sub?: string): Credential {
+  if (typ === "admin") return sub === "curro" ? "curro" : "fran"
+  return "pin"
+}
+
+function hashOf(credential: Credential): string {
+  if (credential === "pin") return Deno.env.get("MF_TEAM_PIN_HASH") ?? ""
+  return passwordHash(credential) ?? ""
+}
+
+/** HMAC corto del hash. La tabla guarda esto, nunca el hash. */
+async function credentialFingerprint(hash: string): Promise<string> {
+  const mac = await hmac(sessionSecret(), `mf-cred:${hash}`)
+  return bytesToB64url(mac).slice(0, 22)
+}
+
+function expiredMessage(typ: TokenPayload["typ"]): string {
+  if (typ === "admin") return "Tu sesión ha caducado, vuelve a introducir la contraseña."
+  return "Tu sesión ha caducado, vuelve a introducir el PIN."
+}
+
+async function syncCredential(credential: Credential): Promise<number> {
+  const hash = hashOf(credential)
+  if (!hash.startsWith("pbkdf2_sha256$")) {
+    throw new HttpError(503, { ok: false, message: "El acceso todavía no está configurado." })
+  }
+  const fingerprint = await credentialFingerprint(hash)
+  const { data, error } = await db()
+    .from("session_versions")
+    .select("version, fingerprint")
+    .eq("credential", credential)
+    .maybeSingle()
+  if (error || !data) {
+    console.error("session-version", error?.code ?? "vacio")
+    throw new HttpError(500, { ok: false, message: "No se ha podido comprobar el acceso. Inténtalo de nuevo." })
+  }
+  const version = Number(data.version)
+  const current = typeof data.fingerprint === "string" ? data.fingerprint : ""
+  if (current === fingerprint) return version
+  const next = current === "" ? version : version + 1
+  const { data: updated, error: updateError } = await db()
+    .from("session_versions")
+    .update({ version: next, fingerprint, updated_at: new Date().toISOString() })
+    .eq("credential", credential)
+    .eq("fingerprint", current)
+    .select("version")
+    .maybeSingle()
+  if (updateError) {
+    console.error("session-bump", updateError.code)
+    throw new HttpError(500, { ok: false, message: "No se ha podido comprobar el acceso. Inténtalo de nuevo." })
+  }
+  if (updated) return Number(updated.version)
+  const { data: again } = await db().from("session_versions").select("version").eq("credential", credential).maybeSingle()
+  return Number(again?.version ?? next)
+}
+
+export async function bumpTeamSessions(): Promise<void> {
+  const { data, error } = await db().from("session_versions").select("version").eq("credential", "pin").maybeSingle()
+  if (error || !data) throw new HttpError(500, { ok: false, message: "No se han podido cerrar las sesiones. Inténtalo de nuevo." })
+  const next = Number(data.version) + 1
+  const { error: updateError } = await db()
+    .from("session_versions")
+    .update({ version: next, updated_at: new Date().toISOString() })
+    .eq("credential", "pin")
+    .eq("version", data.version)
+  if (updateError) throw new HttpError(500, { ok: false, message: "No se han podido cerrar las sesiones. Inténtalo de nuevo." })
+}
+
 export async function signToken(typ: TokenPayload["typ"], sub?: string): Promise<string> {
   const lifetime = typ === "admin" ? days("MF_ADMIN_SESSION_DAYS", 7) : days("MF_TEAM_SESSION_DAYS", 30)
-  const payload: TokenPayload = { typ, exp: Math.floor((Date.now() + lifetime * DAY_MS) / 1000) }
+  const cred = credentialOf(typ, sub)
+  const payload: TokenPayload = {
+    typ,
+    exp: Math.floor((Date.now() + lifetime * DAY_MS) / 1000),
+    ver: await syncCredential(cred),
+    cred,
+  }
   if (sub) payload.sub = sub
   const body = bytesToB64url(encoder.encode(JSON.stringify(payload)))
   const signature = bytesToB64url(await hmac(sessionSecret(), body))
@@ -100,8 +183,22 @@ export async function verifyToken(token: string, expected: TokenPayload["typ"][]
     throw new HttpError(401, { ok: false, message: "La sesión ha caducado. Vuelve a entrar." })
   }
   if (!expected.includes(payload.typ) || payload.exp * 1000 <= Date.now()) {
-    throw new HttpError(401, { ok: false, message: "La sesión ha caducado. Vuelve a entrar." })
+    throw new HttpError(401, { ok: false, message: expiredMessage(payload.typ === "admin" ? "admin" : "team") })
   }
+  if (payload.cred !== "pin" && payload.cred !== "fran" && payload.cred !== "curro") {
+    throw new HttpError(401, { ok: false, message: expiredMessage(payload.typ) })
+  }
+  if (typeof payload.ver !== "number" || !Number.isInteger(payload.ver)) {
+    throw new HttpError(401, { ok: false, message: expiredMessage(payload.typ) })
+  }
+  if (payload.typ === "admin" && payload.cred !== payload.sub) {
+    throw new HttpError(401, { ok: false, message: expiredMessage("admin") })
+  }
+  if (payload.typ !== "admin" && payload.cred !== "pin") {
+    throw new HttpError(401, { ok: false, message: expiredMessage("team") })
+  }
+  const version = await syncCredential(payload.cred)
+  if (payload.ver !== version) throw new HttpError(401, { ok: false, message: expiredMessage(payload.typ) })
   return payload
 }
 
@@ -134,7 +231,31 @@ export async function assertConfigured(hash: string | undefined): Promise<string
   return hash
 }
 
-async function recentAttempts(kind: "pin" | "password", subject: string) {
+async function globalFailureState(kind: "pin" | "password"): Promise<{ count: number; newest: string | null }> {
+  const since = new Date(Date.now() - LOCK_MS).toISOString()
+  const { count, error } = await db()
+    .from("login_attempts")
+    .select("id", { count: "exact", head: true })
+    .eq("kind", kind)
+    .eq("success", false)
+    .gte("created_at", since)
+  if (error) {
+    console.error("attempts", error.code)
+    throw new HttpError(500, { ok: false, message: "No se ha podido comprobar el acceso. Inténtalo de nuevo." })
+  }
+  const { data } = await db()
+    .from("login_attempts")
+    .select("created_at")
+    .eq("kind", kind)
+    .eq("success", false)
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(1)
+  const newest = data?.[0]?.created_at
+  return { count: count ?? 0, newest: typeof newest === "string" ? newest : null }
+}
+
+async function failureRows(kind: "pin" | "password", subject: string) {
   const since = new Date(Date.now() - LOCK_MS).toISOString()
   const { data, error } = await db()
     .from("login_attempts")
@@ -151,20 +272,52 @@ async function recentAttempts(kind: "pin" | "password", subject: string) {
   return data ?? []
 }
 
-export async function assertNotLocked(kind: "pin" | "password", subject: string): Promise<void> {
-  const rows = await recentAttempts(kind, subject)
+function consecutiveFailures(rows: { success: boolean; created_at: string }[]): number {
   let failures = 0
   for (const row of rows) {
     if (row.success) break
     failures++
   }
-  if (failures < MAX_FAILURES) return
-  const newest = rows[0]?.created_at
-  const until = new Date(new Date(newest as string).getTime() + LOCK_MS)
-  throw new HttpError(429, {
-    ok: false,
-    message: `Demasiados intentos. Podrás probar de nuevo el ${madrid(until)}.`,
-  })
+  return failures
+}
+
+export async function assertNotLocked(kind: "pin" | "password", subject: string): Promise<void> {
+  const own = await failureRows(kind, subject)
+  if (consecutiveFailures(own) >= MAX_FAILURES) {
+    const until = new Date(new Date(own[0]!.created_at).getTime() + LOCK_MS)
+    throw new HttpError(429, {
+      ok: false,
+      message: `Demasiados intentos. Podrás probar de nuevo el ${madrid(until)}.`,
+    })
+  }
+  const global = await globalFailureState(kind)
+  if (global.count >= GLOBAL_FAILURES) {
+    const until = new Date(new Date(global.newest ?? Date.now()).getTime() + LOCK_MS)
+    throw new HttpError(429, {
+      ok: false,
+      message: `Demasiados intentos. Podrás probar de nuevo el ${madrid(until)}.`,
+    })
+  }
+}
+
+async function notifyLock(kind: "pin" | "password"): Promise<void> {
+  const since = new Date(Date.now() - LOCK_MS).toISOString()
+  const notice = kind === "pin" ? "pin_lock" : "password_lock"
+  const { data: sent } = await db().from("security_notices").select("id").eq("kind", notice).gte("created_at", since).limit(1)
+  if ((sent ?? []).length > 0) return
+  const { error } = await db().from("security_notices").insert({ kind: notice })
+  if (error) {
+    console.error("notice", error.code)
+    return
+  }
+  const { data } = await db().from("staff").select("email").eq("slug", "fran").maybeSingle()
+  const to = typeof data?.email === "string" ? data.email : ""
+  if (!to) return
+  const { sendNotice } = await import("./email.ts")
+  const text = kind === "pin"
+    ? "Alguien ha fallado el PIN del equipo muchas veces seguidas. La entrada con PIN queda bloqueada 15 minutos. Las sesiones ya abiertas siguen, y la contraseña de gestión no se bloquea por esto."
+    : "Alguien ha fallado la contraseña de gestión muchas veces seguidas. La entrada con contraseña queda bloqueada 15 minutos. Las sesiones ya abiertas siguen, y el PIN del equipo no se bloquea por esto."
+  await sendNotice(to, kind === "pin" ? "Montaigne Fix: PIN bloqueado un rato" : "Montaigne Fix: contraseña de gestión bloqueada un rato", text)
 }
 
 export async function recordAttempt(kind: "pin" | "password", subject: string, success: boolean): Promise<void> {
@@ -172,6 +325,10 @@ export async function recordAttempt(kind: "pin" | "password", subject: string, s
   if (error) console.error("record", error.code)
   const cutoff = new Date(Date.now() - 2 * DAY_MS).toISOString()
   await db().from("login_attempts").delete().lt("created_at", cutoff)
+  await db().from("security_notices").delete().lt("created_at", cutoff)
+  if (success) return
+  const global = await globalFailureState(kind)
+  if (global.count >= GLOBAL_FAILURES) await notifyLock(kind)
 }
 
 export async function loadStaff(slug: string): Promise<Staff | null> {
@@ -209,13 +366,16 @@ export function passwordHash(slug: string): string | undefined {
 
 export async function requireToken(req: Request, expected: TokenPayload["typ"][]): Promise<TokenPayload> {
   const token = bearer(req)
-  if (!token) throw new HttpError(401, { ok: false, message: "La sesión ha caducado. Vuelve a entrar." })
+  if (!token) {
+    const admin = expected.length === 1 && expected[0] === "admin"
+    throw new HttpError(401, { ok: false, message: expiredMessage(admin ? "admin" : "team") })
+  }
   return verifyToken(token, expected)
 }
 
 export async function requirePerson(req: Request, typ: "team" | "admin", flag: "is_technician" | "is_manager"): Promise<Staff> {
   const payload = await requireToken(req, [typ])
   const staff = await loadStaff(text(payload.sub))
-  if (!staff?.[flag]) throw new HttpError(401, { ok: false, message: "La sesión ha caducado. Vuelve a entrar." })
+  if (!staff?.[flag]) throw new HttpError(401, { ok: false, message: expiredMessage(typ) })
   return staff
 }

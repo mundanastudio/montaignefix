@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import styles from "./PinPad.module.css"
+import { PIN_LENGTH } from "../../domain/pin"
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "borrar"]
 
@@ -17,10 +18,10 @@ export function PinPad({ busy, onSubmit }: { busy: boolean; onSubmit: (pin: stri
   }, [busy])
 
   function addDigit(digit: string) {
-    if (busy || pinRef.current.length >= 4) return
+    if (busy || pinRef.current.length >= PIN_LENGTH) return
     pinRef.current += digit
     setPin(pinRef.current)
-    if (pinRef.current.length === 4) onSubmit(pinRef.current)
+    if (pinRef.current.length === PIN_LENGTH) onSubmit(pinRef.current)
   }
 
   function backspace() {
@@ -41,8 +42,8 @@ export function PinPad({ busy, onSubmit }: { busy: boolean; onSubmit: (pin: stri
   return (
     <div className={styles.pad}>
       <p className={styles.dots} aria-live="polite">
-        <span className="visually-hidden">{pin.length} de 4 cifras</span>
-        {[0, 1, 2, 3].map((index) => (
+        <span className="visually-hidden">{pin.length} de {PIN_LENGTH} cifras</span>
+        {Array.from({ length: PIN_LENGTH }, (_, index) => (
           <span key={index} className={index < pin.length ? styles.filled : styles.empty} />
         ))}
       </p>

@@ -71,9 +71,8 @@ export function TeamList() {
 
   const count = (key: (typeof VIEWS)[number][0]) => {
     if (!tabs) return ""
-    if (key === "sin") return ` ${tabs.sinAsignar}`
-    if (key === "todas") return ` ${tabs.todas}`
-    return ` ${tabs.mias}`
+    const n = key === "sin" ? tabs.sinAsignar : key === "todas" ? tabs.todas : tabs.mias
+    return ` (${n})`
   }
 
   return (

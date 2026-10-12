@@ -98,3 +98,6 @@ verify_jwt = false
 
 [functions.staff-edit-material]
 verify_jwt = false
+
+[functions.admin-close-team-sessions]
+verify_jwt = false

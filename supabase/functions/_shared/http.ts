@@ -45,9 +45,18 @@ export function text(value: unknown): string {
   return typeof value === "string" ? value : ""
 }
 
+function isIp(value: string): boolean {
+  if (value.length < 3 || value.length > 64) return false
+  if (value.includes(",")) return false
+  return /^[0-9a-f:.]+$/i.test(value)
+}
+
+/** IP del cliente. Cloudflare pisa cf-connecting-ip; el primer X-Forwarded-For lo puede poner el navegador. */
 export function clientIp(req: Request): string {
-  const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-  return forwarded || req.headers.get("x-real-ip")?.trim() || "desconocida"
+  const cloudflare = req.headers.get("cf-connecting-ip")?.trim() ?? ""
+  if (isIp(cloudflare)) return cloudflare
+  const chain = (req.headers.get("x-forwarded-for") ?? "").split(",").map((part) => part.trim()).filter(isIp)
+  return chain[chain.length - 1] ?? "desconocida"
 }
 
 export function bearer(req: Request): string {
