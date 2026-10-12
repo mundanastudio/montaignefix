@@ -1,0 +1,31 @@
+/** Único sitio: dominios y excepción del formulario público. Lo leen create-ticket y el frontend. */
+export const ALLOWED_EMAIL_DOMAINS = [
+  "grupomontaigne.com",
+  "grupomontaignesevilla.com",
+  "mundana.us",
+] as const
+
+export const ALLOWED_EMAIL_EXCEPTIONS = ["curromena89@gmail.com"] as const
+
+export const EMAIL_DOMAIN_MESSAGE = "Debes utilizar un correo corporativo del Grupo Montaigne"
+export const EMAIL_LIMIT_MESSAGE = "Debes esperar 24h para poder abrir un parte nuevo"
+
+export const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+
+export function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase()
+}
+
+export function isAllowedRequesterEmail(value: string): boolean {
+  const email = normalizeEmail(value)
+  if (!email || [...email].length > 254 || !EMAIL_RE.test(email)) return false
+  if ((ALLOWED_EMAIL_EXCEPTIONS as readonly string[]).includes(email)) return true
+  const domain = email.slice(email.lastIndexOf("@") + 1)
+  return (ALLOWED_EMAIL_DOMAINS as readonly string[]).includes(domain)
+}
+
+export function requesterEmailFieldError(value: string): string | null {
+  if (!normalizeEmail(value)) return "Escribe tu email: te avisaremos cuando esté solucionado."
+  if (!isAllowedRequesterEmail(value)) return EMAIL_DOMAIN_MESSAGE
+  return null
+}

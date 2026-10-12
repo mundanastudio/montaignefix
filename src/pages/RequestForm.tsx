@@ -5,7 +5,7 @@ import { Card } from "../components/ui/Card"
 import { Input, Textarea } from "../components/ui/Field"
 import { Modal } from "../components/ui/Modal"
 import { rgpdText } from "../content/rgpd"
-import { LIMITS, PHOTO_WARNING, RATE_LIMIT_NOTICE, skipsRateLimit, validateTicket } from "../domain/ticketRules"
+import { LIMITS, PHOTO_WARNING, REVIEW_MESSAGE, validateTicket } from "../domain/ticketRules"
 import { createTicket, NetworkError } from "../lib/api"
 import { compressImage } from "../lib/compressImage"
 import styles from "./RequestForm.module.css"
@@ -39,6 +39,21 @@ export function RequestForm() {
   const photoRef = useRef<PhotoState | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const rgpdId = useId()
+  const [focusId, setFocusId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!focusId) return
+    const el = document.getElementById(focusId)
+    if (el instanceof HTMLElement) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" })
+      el.focus({ preventScroll: true })
+    }
+    setFocusId(null)
+  }, [focusId, errors])
+
+  useEffect(() => {
+    if (Object.keys(errors).length === 0 && formError === REVIEW_MESSAGE) setFormError(null)
+  }, [errors, formError])
 
   useEffect(() => {
     return () => {
@@ -65,6 +80,12 @@ export function RequestForm() {
   async function onPhoto(file: File | undefined) {
     const request = ++photoRequest.current
     setPhotoError(null)
+    setErrors((prev) => {
+      if (!prev.photo) return prev
+      const next = { ...prev }
+      delete next.photo
+      return next
+    })
     if (!file) return
     setCompressing(true)
     try {
@@ -95,12 +116,33 @@ export function RequestForm() {
     setFormError(null)
   }
 
+  function firstErrorId(found: Record<string, string>): string | null {
+    const order = [
+      ["name", "parte-name"],
+      ["email", "parte-email"],
+      ["description", "parte-description"],
+      ["location", "parte-location"],
+      ["photo", "parte-photo"],
+      ["notes", "parte-notes"],
+      ["rgpd", rgpdId],
+    ] as const
+    for (const [key, id] of order) {
+      if (found[key]) return id
+    }
+    return null
+  }
+
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
     setFormError(null)
     const found = validateTicket({ ...fields, rgpd })
+    if (photoError) found.photo = photoError
     setErrors(found)
-    if (Object.keys(found).length > 0 || compressing || photoError) return
+    if (Object.keys(found).length > 0 || compressing) {
+      setFormError(REVIEW_MESSAGE)
+      setFocusId(firstErrorId(found) ?? (compressing ? "parte-photo" : null))
+      return
+    }
 
     setSending(true)
     try {
@@ -108,6 +150,7 @@ export function RequestForm() {
       if (!result.ok) {
         if (result.fields) setErrors(result.fields)
         setFormError(result.message)
+        if (result.fields) setFocusId(firstErrorId(result.fields))
         return
       }
       clearForm()
@@ -129,6 +172,7 @@ export function RequestForm() {
       <Card>
         <form className={styles.form} noValidate onSubmit={onSubmit}>
           <Input
+            id="parte-name"
             label="Nombre"
             required
             autoComplete="name"
@@ -139,7 +183,8 @@ export function RequestForm() {
             onChange={(e) => set("name", e.target.value)}
           />
           <Input
-            label="Email"
+            id="parte-email"
+            label="Email corporativo"
             type="email"
             required
             autoComplete="email"
@@ -147,11 +192,12 @@ export function RequestForm() {
             maxLength={LIMITS.email}
             value={fields.email}
             error={errors.email}
-            placeholder="nombre@grupomontaigne.com"
+            placeholder="nombre@grupomontaignesevilla.com"
             hint="Te escribiremos a este email cuando esté solucionado."
             onChange={(e) => set("email", e.target.value)}
           />
           <Textarea
+            id="parte-description"
             label="Reparación necesaria"
             required
             maxLength={LIMITS.description}
@@ -161,6 +207,7 @@ export function RequestForm() {
             onChange={(e) => set("description", e.target.value)}
           />
           <Input
+            id="parte-location"
             label="Lugar"
             required
             maxLength={LIMITS.location}
@@ -178,11 +225,14 @@ export function RequestForm() {
             <Alert tone="warning">{PHOTO_WARNING}</Alert>
             <label className={styles.fileLabel}>
               <input
+                id="parte-photo"
                 ref={fileRef}
                 type="file"
                 accept="image/*"
                 className={styles.file}
                 aria-labelledby="foto-label"
+                aria-invalid={errors.photo ? true : undefined}
+                aria-describedby={errors.photo ? "parte-photo-error" : undefined}
                 onChange={(e) => void onPhoto(e.target.files?.[0])}
               />
               {compressing ? "Preparando la foto…" : "Hacer o elegir una foto"}
@@ -195,14 +245,15 @@ export function RequestForm() {
                 </Button>
               </figure>
             )}
-            {photoError && (
-              <p className={styles.photoError} role="alert">
-                {photoError}
+            {(photoError || errors.photo) && (
+              <p id="parte-photo-error" className={styles.photoError} role="alert">
+                {photoError ?? errors.photo}
               </p>
             )}
           </div>
 
           <Textarea
+            id="parte-notes"
             label="Observaciones adicionales"
             maxLength={LIMITS.notes}
             value={fields.notes}
@@ -211,7 +262,7 @@ export function RequestForm() {
             onChange={(e) => set("notes", e.target.value)}
           />
 
-          <div className={styles.rgpd}>
+          <div className={`${styles.rgpd} ${errors.rgpd ? styles.rgpdInvalid : ""}`}>
             <label className={styles.rgpdLabel} htmlFor={rgpdId}>
               <input
                 id={rgpdId}
@@ -238,12 +289,8 @@ export function RequestForm() {
             )}
           </div>
 
-          {!skipsRateLimit(fields.email) && <Alert tone="info">{RATE_LIMIT_NOTICE}</Alert>}
-
           {formError && (
-            <Alert tone="error" title="No se ha enviado">
-              {formError}
-            </Alert>
+            <Alert tone="error">{formError}</Alert>
           )}
 
           <Button type="submit" size="lg" fullWidth loading={sending} disabled={compressing || sending}>

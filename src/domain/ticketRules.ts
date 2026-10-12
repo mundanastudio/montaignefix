@@ -1,3 +1,5 @@
+import { requesterEmailFieldError } from "../../supabase/functions/_shared/allowedEmails"
+
 /** Límites alineados con los CHECK de montaigne_fix.tickets y con la Edge Function create-ticket. */
 export const LIMITS = {
   name: 120,
@@ -9,22 +11,9 @@ export const LIMITS = {
   photoBytes: 500 * 1024,
 } as const
 
-export const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
-
-export const RATE_LIMIT_NOTICE =
-  "Con el mismo email puedes abrir hasta 3 partes cada 24 horas. Si llegas al límite, tendrás que esperar a que pasen 24 horas para abrir otro."
-
-/** Fran y Curro abren partes sin el tope de 24 horas. */
-const UNLIMITED_REQUESTERS = new Set([
-  "francisco.flores@grupomontaigne.com",
-  "curromena89@gmail.com",
-])
-
-export function skipsRateLimit(email: string): boolean {
-  return UNLIMITED_REQUESTERS.has(email.trim().toLowerCase())
-}
-
 export const PHOTO_WARNING = "No fotografíes a alumnos ni a otras personas. Fotografía solo el desperfecto."
+
+export const REVIEW_MESSAGE = "Revisa los campos marcados en rojo."
 
 export interface TicketInput {
   name: string
@@ -43,7 +32,6 @@ export function charCount(value: string): number {
 export function validateTicket(input: TicketInput): Record<string, string> {
   const errors: Record<string, string> = {}
   const name = input.name.trim()
-  const email = input.email.trim()
   const description = input.description.trim()
   const location = input.location.trim()
   const notes = input.notes.trim()
@@ -51,10 +39,8 @@ export function validateTicket(input: TicketInput): Record<string, string> {
   if (!name) errors.name = "Escribe tu nombre."
   else if (charCount(name) > LIMITS.name) errors.name = `El nombre no puede pasar de ${LIMITS.name} caracteres.`
 
-  if (!email) errors.email = "Escribe tu email: te avisaremos cuando esté solucionado."
-  else if (charCount(email) > LIMITS.email || !EMAIL_RE.test(email)) {
-    errors.email = "Revisa el email: tiene que ser del tipo nombre@grupomontaigne.com."
-  }
+  const emailError = requesterEmailFieldError(input.email)
+  if (emailError) errors.email = emailError
 
   if (!description) errors.description = "Cuéntanos qué hay que reparar."
   else if (charCount(description) > LIMITS.description) {

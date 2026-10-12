@@ -23,6 +23,11 @@
   gap: var(--space-6);
 }
 
+.photo,
+.rgpd {
+  scroll-margin-top: calc(var(--header-height) + env(safe-area-inset-top, 0px) + var(--space-4));
+}
+
 .photo {
   display: flex;
   flex-direction: column;
@@ -109,4 +114,16 @@
   margin-top: 2px;
   flex-shrink: 0;
   accent-color: var(--color-primary);
+}
+
+.rgpdInvalid .rgpdLabel input {
+  outline: 2px solid var(--color-error);
+  outline-offset: 2px;
+}
+
+@media (min-width: 1024px) {
+  .photo,
+  .rgpd {
+    scroll-margin-top: calc(var(--header-height-desktop) + env(safe-area-inset-top, 0px) + var(--space-4));
+  }
 }

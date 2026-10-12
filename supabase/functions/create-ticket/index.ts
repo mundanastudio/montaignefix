@@ -1,11 +1,11 @@
 // Formulario público. verify_jwt = false: no hay sesión, la anon key solo llama aquí.
 // La service role no sale de esta función. El aviso a Fran no impide crear el parte.
 import { createClient } from "npm:@supabase/supabase-js@2"
+import { EMAIL_LIMIT_MESSAGE, normalizeEmail, requesterEmailFieldError } from "../_shared/allowedEmails.ts"
 import { notifyNew, sendNotice } from "../_shared/email.ts"
 import { clientIp } from "../_shared/http.ts"
 
 const LIMITS = { name: 120, email: 254, description: 2000, location: 200, notes: 2000 }
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const MAX_PHOTO_BYTES = 1_500_000
 const RATE_LIMIT = 3
 const HOUR_LIMIT = 10
@@ -38,20 +38,6 @@ function fieldError(fields: Record<string, string>): Response {
 }
 
 
-function madrid(date: Date): string {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Madrid",
-    day: "2-digit",
-    month: "2-digit",
-    year: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date)
-  const pick = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? ""
-  return `${pick("day")}/${pick("month")}/${pick("year")} • ${pick("hour")}:${pick("minute")}`
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors })
   if (req.method !== "POST") return json(405, { ok: false, message: "Método no permitido." })
@@ -69,7 +55,7 @@ Deno.serve(async (req) => {
   }
 
   const name = text("name")
-  const email = text("email").toLowerCase()
+  const email = normalizeEmail(text("email"))
   const description = text("description")
   const location = text("location")
   const notes = text("notes")
@@ -77,9 +63,8 @@ Deno.serve(async (req) => {
   const fields: Record<string, string> = {}
   if (!name) fields.name = "Escribe tu nombre."
   else if (chars(name) > LIMITS.name) fields.name = `El nombre no puede pasar de ${LIMITS.name} caracteres.`
-  if (!email || chars(email) > LIMITS.email || !EMAIL_RE.test(email)) {
-    fields.email = "Revisa el email: tiene que ser del tipo nombre@grupomontaigne.com."
-  }
+  const emailError = requesterEmailFieldError(email)
+  if (emailError) fields.email = emailError
   if (!description) fields.description = "Cuéntanos qué hay que reparar."
   else if (chars(description) > LIMITS.description) fields.description = `El texto no puede pasar de ${LIMITS.description} caracteres.`
   if (!location) fields.location = "Indica dónde está: aula, planta, patio, auditorio, baños…"
@@ -131,14 +116,7 @@ Deno.serve(async (req) => {
       return json(500, { ok: false, message: "No se ha podido enviar el parte. Inténtalo de nuevo más tarde." })
     }
     if ((recent?.length ?? 0) >= RATE_LIMIT) {
-      const oldest = new Date(recent![0].created_at as string)
-      const retryAt = new Date(oldest.getTime() + WINDOW_MS)
-      return json(429, {
-        ok: false,
-        message:
-          `Con este email ya hay ${RATE_LIMIT} partes en las últimas 24 horas. ` +
-          `Podrás abrir otro el ${madrid(retryAt)}. Hasta entonces no se puede enviar otro parte.`,
-      })
+      return json(429, { ok: false, message: EMAIL_LIMIT_MESSAGE })
     }
 
     const ip = clientIp(req)

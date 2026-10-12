@@ -27,7 +27,7 @@ Herramienta web para abrir y gestionar **partes de reparación física** en el C
 ### 3.1 Formulario público — `/`
 Campos:
 - Nombre (obligatorio)
-- Email (obligatorio, validado; para avisarle cuando esté hecho)
+- Email corporativo (obligatorio). Dominios exactos: `grupomontaigne.com`, `grupomontaignesevilla.com` y `mundana.us` (sin distinguir mayúsculas; se recortan espacios). Excepción: `curromena89@gmail.com`. Si no vale: «Debes utilizar un correo corporativo del Grupo Montaigne». Se guarda y se cuenta el tope de 3 partes / 24 h con el email ya normalizado. Al llegar al tope: «Debes esperar 24h para poder abrir un parte nuevo».
 - Reparación necesaria (obligatorio, texto)
 - Lugar (obligatorio, **texto libre**: aula, planta, patio, auditorio, baños…)
 - Foto (opcional, una; se puede hacer directamente con la cámara del móvil)
@@ -163,7 +163,7 @@ Las plantillas HTML y de texto ya están diseñadas en la carpeta `emails/` (rec
 
 ## 8. RGPD y conservación
 
-- Casilla obligatoria en el formulario con texto breve: responsable (Grupo Montaigne), finalidad (gestionar la reparación y avisar al solicitante), conservación (12 meses) y contacto para ejercer derechos. Dejar el texto en un archivo fácil de editar: **el texto legal definitivo lo dará el colegio**.
+- Casilla obligatoria en el formulario. El texto está en `src/content/rgpd.ts`: «He leído y acepto que Grupo Montaigne (responsable) trate mi nombre y mi email para gestionar la reparación y avisarme cuando esté solucionada. Los datos se conservan 12 meses. Para ejercer tus derechos de acceso, rectificación o supresión escribe a soportemundanastudio@mundana.us». El texto legal definitivo del colegio sigue pendiente (sección 11).
 - Aviso de no fotografiar personas (ver 3.1).
 - **Borrado automático**: solo las incidencias **resueltas** o **cerradas** hace más de 12 meses. Se borran con sus fotos, notas, materiales, historial y el registro de correos de ese parte (destinatario y asunto). No se borran las abiertas, sin asignar, en curso, en espera, rechazadas ni duplicadas, aunque haya pasado un año. El borrado se ejecuta **después** de un informe anual enviado bien, así ninguna se borra sin haber salido en un informe. Si el informe anual falla, se avisa a Curro y no se borra nada nuevo hasta que el informe salga.
 - Las IPs de intentos de acceso y de los topes del formulario se guardan como mucho 2 días.

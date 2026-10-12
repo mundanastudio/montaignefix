@@ -1,3 +1,5 @@
+import { normalizeEmail } from "../../supabase/functions/_shared/allowedEmails"
+
 export class NetworkError extends Error {
   constructor() {
     super("No se ha podido enviar. Comprueba tu conexión e inténtalo de nuevo. Tus datos siguen en el formulario.")
@@ -38,7 +40,7 @@ export async function createTicket(
 
   const body = new FormData()
   body.set("name", input.name.trim())
-  body.set("email", input.email.trim())
+  body.set("email", normalizeEmail(input.email))
   body.set("description", input.description.trim())
   body.set("location", input.location.trim())
   body.set("notes", input.notes.trim())

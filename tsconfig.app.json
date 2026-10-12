@@ -17,5 +17,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true
   },
-  "include": ["src"]
+  "include": ["src", "supabase/functions/_shared/allowedEmails.ts"]
 }
