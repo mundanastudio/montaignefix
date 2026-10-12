@@ -57,6 +57,7 @@ interface Ticket {
   assignee: string | null
   assigneeId: string | null
   mine: boolean
+  rejectionReason: string | null
   resolvedAt: string | null
   createdAt: string
 }
@@ -221,6 +222,12 @@ export function TeamTicket() {
           <img className={styles.photo} src={ticket.photoUrl} alt={`Foto del desperfecto de ${ticket.code}`} />
         ) : (
           <p className={styles.muted}>{ticket.photoError ? "No se ha podido cargar la foto." : "Sin foto."}</p>
+        )}
+        {ticket.status === "rechazado" && ticket.rejectionReason && (
+          <div>
+            <h3>Motivo del rechazo</h3>
+            <p className={styles.pre}>{ticket.rejectionReason}</p>
+          </div>
         )}
       </section>
 

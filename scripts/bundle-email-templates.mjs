@@ -14,6 +14,8 @@ const files = [
   ["fran-resuelto.txt", "franResueltoTxt"],
   ["cerrado.html", "cerradoHtml"],
   ["cerrado.txt", "cerradoTxt"],
+  ["rechazado.html", "rechazadoHtml"],
+  ["rechazado.txt", "rechazadoTxt"],
 ]
 const body = files
   .map(([name, key]) => {

@@ -68,13 +68,22 @@ export function subjectSolucionado(reparacion, codigo) {
   return `✓ Solucionado: ${clip(reparacion, 60)} (${codigo})`
 }
 
+export function subjectRechazado(codigo, reparacion) {
+  return `Sobre tu solicitud ${codigo}: ${clip(reparacion, 60)}`
+}
+
+export function firstName(value) {
+  const text = plain(value)
+  return text.split(/\s+/)[0] ?? text
+}
+
 export function publicUrls(base) {
   const root = String(base ?? "").trim().replace(/\/+$/, "")
   if (!root) return null
   return { formulario: `${root}/`, assets: `${root}/email` }
 }
 
-const USER_FIELDS = new Set(["nombre", "reparacion", "lugar", "observaciones", "nota_tecnico", "email", "tecnico"])
+const USER_FIELDS = new Set(["nombre", "reparacion", "lugar", "observaciones", "nota_tecnico", "email", "tecnico", "motivo"])
 
 function empty(value) {
   if (value === undefined || value === null) return true
@@ -91,7 +100,11 @@ export function stripOptional(template, vars) {
 export function fill(template, vars, html) {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => {
     const value = vars[key] ?? ""
-    return html && USER_FIELDS.has(key) ? escapeHtml(value) : String(value)
+    if (html && USER_FIELDS.has(key)) {
+      const escaped = escapeHtml(value)
+      return key === "motivo" ? escaped.replace(/\r\n|\r|\n/g, "<br>") : escaped
+    }
+    return String(value)
   })
 }
 

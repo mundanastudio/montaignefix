@@ -11,7 +11,9 @@ import {
   render,
   subjectFranNuevo,
   subjectFranResuelto,
+  firstName,
   subjectRecibido,
+  subjectRechazado,
   subjectSolucionado,
 } from "../supabase/functions/_shared/email-render.mjs"
 
@@ -50,6 +52,40 @@ assert.equal(subjectRecibido("MF-0042"), "Hemos recibido tu solicitud MF-0042")
 assert.equal(subjectFranNuevo("MF-0042", "a".repeat(80), "Patio"), `Nuevo parte MF-0042: ${"a".repeat(60)} · Patio`)
 assert.equal(subjectFranResuelto("Fran", "MF-0042", "a".repeat(80)), `Fran ha resuelto MF-0042: ${"a".repeat(60)}`)
 assert.equal(subjectSolucionado("a".repeat(80), "MF-0042"), `✓ Solucionado: ${"a".repeat(60)} (MF-0042)`)
+assert.equal(subjectRechazado("MF-0042", "a".repeat(80)), `Sobre tu solicitud MF-0042: ${"a".repeat(60)}`)
+assert.equal(subjectRechazado("MF-0042", "Persiana").toLowerCase().includes("rechaz"), false)
+assert.equal(firstName("María José Pérez"), "María")
+
+const motivo = "Línea 1\nLínea 2 <b>no</b> & más"
+const rechazado = render(
+  readFileSync(join(dir, "rechazado.html"), "utf8"),
+  {
+    nombre: "Ana",
+    codigo: "MF-0042",
+    reparacion: "Persiana",
+    lugar: "Aula 3",
+    fecha_apertura: "12 de octubre de 2026",
+    motivo,
+    url_formulario: "https://ejemplo.pages.dev/",
+    url_assets: "https://ejemplo.pages.dev/email",
+  },
+  true,
+)
+assert.equal(rechazado.includes("<b>no</b>"), false)
+assert.equal(rechazado.includes("&lt;b&gt;no&lt;/b&gt;"), true)
+assert.equal(rechazado.includes("&amp;"), true)
+assert.equal(rechazado.includes("Línea 1<br>Línea 2"), true)
+const rechazadoTxt = render(readFileSync(join(dir, "rechazado.txt"), "utf8"), {
+  nombre: "Ana",
+  codigo: "MF-0042",
+  reparacion: "Persiana",
+  lugar: "Aula 3",
+  fecha_apertura: "12 de octubre de 2026",
+  motivo,
+  url_formulario: "https://ejemplo.pages.dev/",
+  url_assets: "https://ejemplo.pages.dev/email",
+}, false)
+assert.equal(rechazadoTxt.includes("Línea 1\nLínea 2 <b>no</b> & más"), true)
 assert.equal(clip("áéíóúñ", 3), "áéí")
 assert.equal(escapeHtml(`<>&"'`), "&lt;&gt;&amp;&quot;&#39;")
 assert.equal(fechaConHora("2026-10-12T10:00:00.000Z").includes("12 de octubre de 2026"), true)
@@ -101,7 +137,7 @@ const resuelto = render(
 assert.equal(resuelto.includes("material(es)"), false)
 assert.equal(resuelto.includes("Nota de"), false)
 
-for (const name of ["recibido.html", "recibido.txt", "fran-nuevo.html", "fran-nuevo.txt", "fran-resuelto.html", "fran-resuelto.txt", "cerrado.html", "cerrado.txt"]) {
+for (const name of ["recibido.html", "recibido.txt", "fran-nuevo.html", "fran-nuevo.txt", "fran-resuelto.html", "fran-resuelto.txt", "cerrado.html", "cerrado.txt", "rechazado.html", "rechazado.txt"]) {
   assert.equal(readFileSync(join(dir, name), "utf8"), readFileSync(join(assets, name), "utf8"), name)
 }
 

@@ -16,6 +16,8 @@ const MANAGERS = [
   { slug: "curro", name: "Curro" },
 ]
 
+const SHOW_TEST_EMAILS = false
+
 export interface AdminContextValue {
   person: Person
   pendingCount: number | null
@@ -36,6 +38,8 @@ export function AdminShell() {
   const [reportNotice, setReportNotice] = useState<string | null>(null)
   const [closingSessions, setClosingSessions] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
+  const [testingEmail, setTestingEmail] = useState(false)
+  const [confirmTestEmail, setConfirmTestEmail] = useState(false)
 
   useEffect(() => {
     if (!adminToken()) return
@@ -99,6 +103,19 @@ export function AdminShell() {
       return
     }
     setReportNotice(result.sent ? "Informe de los últimos 7 días enviado a Fran." : result.emailError ?? "No se ha podido enviar el informe.")
+  }
+
+  async function sendTestEmails() {
+    setTestingEmail(true)
+    setReportNotice(null)
+    const result = await call<{ sent?: boolean; emailError?: string | null }>("admin-email-test")
+    setTestingEmail(false)
+    setConfirmTestEmail(false)
+    if (!result.ok) {
+      if (!result.expired) setReportNotice(result.message)
+      return
+    }
+    setReportNotice(result.sent ? "Emails de prueba enviados (cerrado y rechazado)." : result.emailError ?? "No se han podido enviar los emails de prueba.")
   }
 
   async function closeTeamSessions() {
@@ -209,7 +226,9 @@ export function AdminShell() {
       {reportNotice && (
         <Alert
           tone={
-            reportNotice.startsWith("Informe de los últimos") || reportNotice.startsWith("Sesiones del equipo")
+            reportNotice.startsWith("Informe de los últimos") ||
+            reportNotice.startsWith("Sesiones del equipo") ||
+            reportNotice.startsWith("Emails de prueba")
               ? "success"
               : "error"
           }
@@ -223,6 +242,11 @@ export function AdminShell() {
           <Button variant="danger" disabled={closingSessions} onClick={() => setConfirmClose(true)}>
             Cerrar sesiones del equipo
           </Button>
+          {SHOW_TEST_EMAILS && (
+            <Button variant="ghost" disabled={testingEmail} onClick={() => setConfirmTestEmail(true)}>
+              Enviar emails de prueba
+            </Button>
+          )}
         </div>
       )}
       <Confirm
@@ -235,6 +259,16 @@ export function AdminShell() {
         onAccept={() => void closeTeamSessions()}
       >
         El equipo tendrá que volver a introducir el PIN. Tu sesión de gestión sigue abierta.
+      </Confirm>
+      <Confirm
+        open={confirmTestEmail}
+        title="Enviar emails de prueba"
+        acceptLabel="Enviar"
+        busy={testingEmail}
+        onCancel={() => setConfirmTestEmail(false)}
+        onAccept={() => void sendTestEmails()}
+      >
+        Se enviarán al correo de {person.name} una muestra de cerrado y otra de rechazado. No cambia ningún parte real.
       </Confirm>
     </div>
   )

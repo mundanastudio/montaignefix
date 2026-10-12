@@ -6,6 +6,7 @@ import { Button } from "../../components/ui/Button"
 import { Textarea } from "../../components/ui/Field"
 import { Spinner } from "../../components/ui/Spinner"
 import { eventLine, formatWhen, priorityLabel, statusLabel } from "../../domain/labels"
+import { REASON_MAX, REJECT_PRESETS, reasonReady, trimmedReason } from "../../domain/rejectReason"
 import type { AdminContextValue } from "./AdminShell"
 import { Materials } from "../../components/Materials"
 import { Confirm } from "./Confirm"
@@ -58,6 +59,7 @@ interface Ticket {
   assignee: string | null
   assigneeId: string | null
   duplicateOf: string | null
+  rejectionReason: string | null
   createdAt: string
   assignedAt: string | null
   resolvedAt: string | null
@@ -85,6 +87,7 @@ export function TicketDetail() {
   const [assignee, setAssignee] = useState("")
   const [note, setNote] = useState("")
   const [duplicateCode, setDuplicateCode] = useState("")
+  const [rejectReason, setRejectReason] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -123,6 +126,7 @@ export function TicketDetail() {
     setAssignee("")
     setNote("")
     setDuplicateCode("")
+    setRejectReason("")
     setError(null)
     setNotice(null)
     setDialog(null)
@@ -139,11 +143,20 @@ export function TicketDetail() {
   async function run(name: string, body: Record<string, unknown>, okMessage: string) {
     const viewed = viewedTicket()
     if (!viewed) return false
+    if (name === "admin-set-status" && body.status === "rechazado" && dialog !== "rechazar") {
+      if (typeof body.reason === "string" && body.reason.trim()) setRejectReason(trimmedReason(body.reason))
+      setDialog("rechazar")
+      return false
+    }
     const ticketId = viewed.id
+    const payload =
+      name === "admin-set-status" && body.status === "rechazado"
+        ? { ...body, reason: trimmedReason(typeof body.reason === "string" ? body.reason : rejectReason) }
+        : body
     setBusy(true)
     setError(null)
     setNotice(null)
-    const result = await call(name, { ticketId, ...body })
+    const result = await call<{ emailError?: string | null }>(name, { ticketId, ...payload })
     if (viewed.code !== codeRef.current) return false
     if (!result.ok) {
       setBusy(false)
@@ -154,8 +167,9 @@ export function TicketDetail() {
     await load()
     if (viewed.code !== codeRef.current) return false
     setBusy(false)
-    setNotice(okMessage)
+    setNotice(result.emailError ? `${okMessage} El email al solicitante no ha salido.` : okMessage)
     setDialog(null)
+    if (name === "admin-set-status" && payload.status === "rechazado") setRejectReason("")
     return true
   }
 
@@ -256,6 +270,12 @@ export function TicketDetail() {
           <p>
             Duplicado de <Link to={`/gestion/${ticket.duplicateOf}`}>{ticket.duplicateOf}</Link>
           </p>
+        )}
+        {ticket.status === "rechazado" && ticket.rejectionReason && (
+          <div>
+            <h3>Motivo del rechazo</h3>
+            <p className={styles.pre}>{ticket.rejectionReason}</p>
+          </div>
         )}
       </section>
 
@@ -438,10 +458,31 @@ export function TicketDetail() {
         acceptLabel="Rechazar"
         danger
         busy={busy}
+        acceptDisabled={!reasonReady(rejectReason)}
         onCancel={() => setDialog(null)}
-        onAccept={() => void run("admin-set-status", { status: "rechazado" }, "Incidencia rechazada.")}
+        onAccept={() =>
+          void run("admin-set-status", { status: "rechazado", reason: trimmedReason(rejectReason) }, "Incidencia rechazada.")
+        }
       >
-        <p>Vas a rechazar {ticket.code}. Dejará de estar en el trabajo del equipo.</p>
+        <p>Vas a rechazar {ticket.code}. Dejará de estar en el trabajo del equipo. La persona que abrió el parte recibirá este motivo por email.</p>
+        <div className={styles.chips}>
+          {REJECT_PRESETS.map((preset) => (
+            <Button key={preset} type="button" variant="secondary" disabled={busy} onClick={() => setRejectReason(preset)}>
+              {preset}
+            </Button>
+          ))}
+        </div>
+        <Textarea
+          label="Motivo (lo recibirá la persona que abrió el parte)"
+          required
+          value={rejectReason}
+          rows={5}
+          hint="Escribe en tono amable: este texto le llegará tal cual por email."
+          onChange={(event) => setRejectReason(event.target.value)}
+        />
+        <p className={styles.hint}>
+          {trimmedReason(rejectReason).length} / {REASON_MAX}
+        </p>
       </Confirm>
       <Confirm
         open={dialog === "borrar"}

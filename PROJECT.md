@@ -43,7 +43,7 @@ El solicitante **no ve el estado** de su parte: solo recibe el email final.
 ### 3.2 Panel del gerente — `/gestion`
 - Listado de todas las incidencias con filtros (estado, prioridad, asignado) y búsqueda por texto.
 - Ficha de cada incidencia con todos los datos, la foto y el historial completo.
-- Puede: asignar prioridad (P1/P2/P3), cambiar estado, asignar o reasignar a Fran/Agustín/Andrés, añadir **observaciones de gestión**, cerrar (desde cualquier estado abierto, sin pasar por Resuelto), reabrir, rechazar o marcar como duplicado.
+- Puede: asignar prioridad (P1/P2/P3), cambiar estado, asignar o reasignar a Fran/Agustín/Andrés, añadir **observaciones de gestión**, cerrar (desde cualquier estado abierto, sin pasar por Resuelto), reabrir, rechazar (con motivo obligatorio de 10–500 caracteres, que recibe el solicitante por email) o marcar como duplicado.
 - Al asignar se guarda la fecha de asignación (vía historial, sección 5).
 - Sección **"Lista de la compra"** (ver 3.4), con un contador de artículos pendientes visible en la navegación del panel.
 
@@ -104,7 +104,7 @@ Cada incidencia tiene un código legible: **MF-0001, MF-0002…**
 Proyecto Supabase existente del usuario. Si ya aloja otra herramienta, crear todo en un **schema propio `montaigne_fix`**.
 
 Tablas mínimas (ajusta nombres si lo ves mejor, pero justifícalo):
-- `tickets`: id, código MF-XXXX, nombre y email del solicitante, reparación, lugar, observaciones del solicitante, ruta de la foto, estado, prioridad, técnico asignado, fechas (`created_at`, `assigned_at`, `resolved_at`, `closed_at`, `updated_at`).
+- `tickets`: id, código MF-XXXX, nombre y email del solicitante, reparación, lugar, observaciones del solicitante, ruta de la foto, estado, prioridad, técnico asignado, fechas (`created_at`, `assigned_at`, `resolved_at`, `closed_at`, `updated_at`), `rejection_reason` (motivo actual si está rechazado; se vacía al reabrir y se borra con el parte).
 - `ticket_events`: **historial** de todo cambio (quién, qué, valor anterior, valor nuevo, cuándo). Fuente de verdad para fechas y para los informes.
 - `ticket_notes`: observaciones con tipo (`gestion` | `interna`), autor y fecha. Las observaciones del solicitante van en `tickets`.
 - `staff`: Fran, Agustín, Andrés (y Curro como admin), con nombre, email y rol.
@@ -117,7 +117,7 @@ Tablas mínimas (ajusta nombres si lo ves mejor, pero justifícalo):
   - `purchased_by` → `staff.id` (nullable), `purchased_at` (nullable)
   - Restricción: si `status = 'comprado'` entonces `purchased_at` y `purchased_by` no son nulos; si `pendiente`, ambos nulos.
   - Índices: `(status, created_at)` para la lista de Fran y `(ticket_id)` para la ficha.
-  - Cada alta, edición, compra, vuelta a pendiente o borrado se registra en `ticket_events` (tipo `material_solicitado`, `material_editado`, `material_comprado`, `material_repuesto`, `material_borrado`).
+  - Cada alta, edición, compra, vuelta a pendiente o borrado se registra en `ticket_events` (tipo `material_solicitado`, `material_editado`, `material_comprado`, `material_repuesto`, `material_borrado`). El rechazo de un parte también queda en `ticket_events` (tipo `rechazo`, con el motivo; se conserva al reabrir).
   - El borrado de un artículo pendiente sí es físico (era un error); el resto es borrado lógico.
 
 **Fotos:** Supabase Storage, bucket **privado**. Comprimir en el navegador antes de subir (máx. ~1600 px de lado, JPEG ~0,7, objetivo < 500 KB). En la base de datos solo se guarda la ruta. Se muestran en los paneles con URLs firmadas temporales. **Nunca base64 en la base de datos.**
@@ -144,10 +144,11 @@ Solo se envían estos emails:
 | Se abre un parte | Fran | Todos los datos + la foto (incrustada y adjunta) |
 | Un técnico marca **Resuelto** | Fran | Aviso para que lo revise y lo cierre |
 | Fran marca **Cerrado** | Solicitante | "Tu solicitud MF-XXXX (reparación, lugar) ya está solucionada. Gracias." |
+| Fran marca **Rechazado** | Solicitante | Explica el motivo (el texto que escribió Gestión). Asunto: `Sobre tu solicitud MF-XXXX: …`. Marcar como duplicado no envía correo. |
 | Miércoles 8:00 | Fran | Informe semanal |
 | Anual (ver 8) | Fran y Curro | Informe anual |
 
-Las plantillas HTML y de texto ya están diseñadas en la carpeta `emails/` (recibido, fran-nuevo, fran-resuelto, cerrado). Usarlas tal cual; ver `emails/LEEME-CURSOR.md`.
+Las plantillas HTML y de texto están en `assets/email/` y se copian a `supabase/functions/_shared/email-templates/` (recibido, fran-nuevo, fran-resuelto, cerrado, rechazado). Usarlas tal cual; ver `assets/email/LEEME-CURSOR.md`.
 
 ## 7. Informes
 

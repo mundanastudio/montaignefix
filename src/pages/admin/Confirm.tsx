@@ -9,6 +9,7 @@ export function Confirm({
   acceptLabel,
   busy,
   danger = false,
+  acceptDisabled = false,
   onCancel,
   onAccept,
 }: {
@@ -18,6 +19,7 @@ export function Confirm({
   acceptLabel: string
   busy: boolean
   danger?: boolean
+  acceptDisabled?: boolean
   onCancel: () => void
   onAccept: () => void
 }) {
@@ -33,7 +35,7 @@ export function Confirm({
           <Button variant="ghost" onClick={onCancel} disabled={busy}>
             Cancelar
           </Button>
-          <Button variant={danger ? "danger" : "primary"} loading={busy} onClick={onAccept}>
+          <Button variant={danger ? "danger" : "primary"} loading={busy} disabled={acceptDisabled} onClick={onAccept}>
             {acceptLabel}
           </Button>
         </>

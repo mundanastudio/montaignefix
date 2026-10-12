@@ -283,6 +283,7 @@ function mailKind(kind: string): string {
   if (kind === "recibido") return "Acuse"
   if (kind === "resuelto") return "Resuelto"
   if (kind === "cerrado") return "Cerrado"
+  if (kind === "rechazado") return "Rechazado"
   if (kind === "prueba") return "Prueba"
   if (kind === "informe") return "Informe"
   return kind

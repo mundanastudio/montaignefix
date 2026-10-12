@@ -1,0 +1,21 @@
+Hola {{nombre}}, hemos revisado tu solicitud.
+
+Gracias por avisarnos: cada aviso nos ayuda a cuidar el colegio. Esta vez no vamos a tramitarla como reparación a través de Montaigne Fix, y queremos explicarte por qué.
+
+EL MOTIVO
+{{motivo}}
+
+PARTE {{codigo}}
+Reparación:     {{reparacion}}
+Lugar:          {{lugar}}
+Lo pediste el:  {{fecha_apertura}}
+
+Si crees que nos hemos equivocado o la situación ha cambiado, abre un nuevo parte y escribe {{codigo}} en las observaciones. Lo revisaremos de nuevo con mucho gusto:
+{{url_formulario}}
+
+--
+Montaigne Fix · Colegio Montaigne de Sevilla
+powered by Mundana Studio
+
+Mensaje automático. No respondas a este correo.
+Recibes este email porque abriste un parte de reparación. Tus datos se conservan 12 meses y se usan solo para gestionar la reparación (Grupo Montaigne).

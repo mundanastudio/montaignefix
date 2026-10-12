@@ -70,13 +70,63 @@ begin
 
   perform montaigne_fix.admin_set_status(v_fran, v_a, 'cerrado', null);
 
-  perform montaigne_fix.admin_set_status(v_fran, v_b, 'rechazado', null);
+  begin
+    perform montaigne_fix.admin_set_status(v_fran, v_b, 'rechazado', null, null);
+    raise exception 'FALLO: rechazó sin motivo';
+  exception when others then
+    if sqlerrm not like '%motivo del rechazo%' then raise; end if;
+  end;
+
+  begin
+    perform montaigne_fix.admin_set_status(v_fran, v_b, 'rechazado', null, '  corto  ');
+    raise exception 'FALLO: rechazó con menos de 10 caracteres';
+  exception when others then
+    if sqlerrm not like '%motivo del rechazo%' then raise; end if;
+  end;
+
+  perform montaigne_fix.admin_set_status(
+    v_fran, v_b, 'rechazado', null, '  Lo hemos revisado y ya está solucionado.  '
+  );
+  if not exists (
+    select 1 from montaigne_fix.tickets
+    where id = v_b and status = 'rechazado'
+      and rejection_reason = 'Lo hemos revisado y ya está solucionado.'
+  ) then
+    raise exception 'FALLO: el motivo no se guardó recortado';
+  end if;
+  if not exists (
+    select 1 from montaigne_fix.ticket_events
+    where ticket_id = v_b and event_type = 'rechazo'
+      and new_value = 'Lo hemos revisado y ya está solucionado.'
+  ) then
+    raise exception 'FALLO: no quedó el historial de rechazo';
+  end if;
+
   begin
     perform montaigne_fix.admin_set_status(v_fran, v_b, 'cerrado', null);
     raise exception 'FALLO: dejó cerrar una incidencia rechazada';
   exception when others then
     if sqlerrm not like '%Reabre la incidencia%' then raise; end if;
   end;
+  perform montaigne_fix.admin_set_status(v_fran, v_b, 'reabrir', null);
+  if exists (select 1 from montaigne_fix.tickets where id = v_b and rejection_reason is not null) then
+    raise exception 'FALLO: al reabrir seguía el motivo actual';
+  end if;
+
+  perform montaigne_fix.admin_set_status(
+    v_fran, v_b, 'rechazado', null,
+    'Nos falta información para localizarlo o entender qué ocurre. Abre un nuevo parte.'
+  );
+  if not exists (
+    select 1 from montaigne_fix.tickets
+    where id = v_b and rejection_reason like 'Nos falta información%'
+  ) then
+    raise exception 'FALLO: el segundo rechazo no guardó el motivo nuevo';
+  end if;
+  select count(*) into v_events from montaigne_fix.ticket_events where ticket_id = v_b and event_type = 'rechazo';
+  if v_events <> 2 then
+    raise exception 'FALLO: debía haber 2 rechazos en el historial y hay %', v_events;
+  end if;
   perform montaigne_fix.admin_set_status(v_fran, v_b, 'reabrir', null);
 
   perform montaigne_fix.admin_set_status(v_fran, v_a, 'reabrir', null);
@@ -90,6 +140,13 @@ begin
   end if;
 
   perform montaigne_fix.admin_set_status(v_fran, v_b, 'duplicado', 'MF-TEST-A');
+  if exists (select 1 from montaigne_fix.tickets where id = v_b and rejection_reason is not null) then
+    raise exception 'FALLO: al marcar duplicado seguía el motivo de rechazo';
+  end if;
+  select count(*) into v_events from montaigne_fix.ticket_events where ticket_id = v_b and event_type = 'rechazo';
+  if v_events <> 2 then
+    raise exception 'FALLO: el duplicado no debe crear un evento de rechazo y hay %', v_events;
+  end if;
 
   select count(*) into v_events
   from montaigne_fix.ticket_events

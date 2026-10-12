@@ -168,10 +168,26 @@ begin
     raise exception 'FALLO: la reasignación del técnico no llegó a Andrés';
   end if;
 
-  perform montaigne_fix.admin_set_status(v_fran, v_ticket, 'rechazado', null);
+  begin
+    perform montaigne_fix.admin_set_status(v_fran, v_ticket, 'rechazado', null, 'corto');
+    raise exception 'FALLO: rechazó con un motivo demasiado corto';
+  exception when others then
+    if sqlerrm not like '%motivo del rechazo%' then raise; end if;
+  end;
+
+  perform montaigne_fix.admin_set_status(
+    v_fran, v_ticket, 'rechazado', null,
+    'No es una reparación: es una compra de material o equipamiento nuevo.'
+  );
   select status into v_status from montaigne_fix.tickets where id = v_ticket;
   if v_status <> 'rechazado' then
     raise exception 'FALLO: no quedó rechazada';
+  end if;
+  if not exists (
+    select 1 from montaigne_fix.tickets
+    where id = v_ticket and rejection_reason like 'No es una reparación%'
+  ) then
+    raise exception 'FALLO: no quedó el motivo del rechazo';
   end if;
 
   select count(*) into v_n from montaigne_fix.ticket_events where ticket_id = v_ticket;

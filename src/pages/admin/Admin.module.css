@@ -450,7 +450,26 @@
 
 .sessionLock {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-start;
+  gap: var(--space-3);
+}
+
+.chips {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.chips button {
+  height: auto;
+  min-height: var(--touch-target);
+  padding: var(--space-3) var(--space-4);
+  white-space: normal;
+  text-align: left;
+  line-height: 1.35;
 }
 
 .back {

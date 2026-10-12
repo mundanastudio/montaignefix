@@ -3,6 +3,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Copias con datos personales (partes, emails, fotos)
+backups/
+
 # Entorno y secretos (nunca al repo)
 .env
 .env.*

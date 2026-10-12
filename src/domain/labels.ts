@@ -73,6 +73,8 @@ export function eventLine(event: { type: string; old: string | null; new: string
       return `Borró el material: ${event.old ?? ""}`
     case "material_editado":
       return `Cambió el material «${event.old ?? ""}» por «${event.new ?? ""}»`
+    case "rechazo":
+      return `Rechazó el parte: «${event.new ?? ""}»`
     default:
       return "Registró un cambio"
   }

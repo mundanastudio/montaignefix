@@ -8,22 +8,26 @@ import {
   franResueltoTxt,
   recibidoHtml,
   recibidoTxt,
+  rechazadoHtml,
+  rechazadoTxt,
 } from "./email-bodies.ts"
 import {
   duracion,
   fechaConHora,
   fechaLarga,
+  firstName,
   plain,
   publicUrls,
   render,
   subjectFranNuevo,
   subjectFranResuelto,
   subjectRecibido,
+  subjectRechazado,
   subjectSolucionado,
 } from "./email-render.mjs"
 import { db } from "./http.ts"
 
-type Kind = "nuevo" | "recibido" | "resuelto" | "cerrado" | "prueba" | "informe" | "aviso"
+type Kind = "nuevo" | "recibido" | "resuelto" | "cerrado" | "rechazado" | "prueba" | "informe" | "aviso"
 
 interface Outgoing {
   kind: Kind
@@ -534,6 +538,39 @@ export async function notifyResolved(ticketId: string, technicianId: string, tec
   })
 }
 
+export async function notifyRejected(ticketId: string, reason: string): Promise<{ ok: boolean; error: string | null }> {
+  const ticket = await loadTicket(ticketId)
+  const motivo = reason.trim()
+  if (!ticket) {
+    await record({ ticketId, kind: "rechazado", recipient: "", subject: "Sobre tu solicitud", ok: false, error: "No se ha podido leer el parte para avisar al solicitante." })
+    return { ok: false, error: "No se ha podido leer el parte para avisar al solicitante." }
+  }
+  const links = urls()
+  const subject = subjectRechazado(ticket.code, ticket.description)
+  if (!links) {
+    await record({ ticketId, kind: "rechazado", recipient: ticket.requester_email, subject, ok: false, error: "Falta APP_PUBLIC_URL." })
+    return { ok: false, error: "Falta APP_PUBLIC_URL." }
+  }
+  return rendered({
+    kind: "rechazado",
+    ticketId,
+    to: ticket.requester_email,
+    subject,
+    htmlTemplate: rechazadoHtml,
+    textTemplate: rechazadoTxt,
+    vars: {
+      nombre: firstName(ticket.requester_name),
+      codigo: ticket.code,
+      reparacion: plain(ticket.description),
+      lugar: plain(ticket.location),
+      fecha_apertura: fechaLarga(ticket.created_at),
+      motivo,
+      url_formulario: links.formulario,
+      url_assets: links.assets,
+    },
+  })
+}
+
 export async function notifyClosed(ticketId: string): Promise<void> {
   const ticket = await loadTicket(ticketId)
   if (!ticket) {
@@ -560,6 +597,36 @@ export async function notifyClosed(ticketId: string): Promise<void> {
       lugar: plain(ticket.location),
       fecha_apertura: fechaLarga(ticket.created_at),
       fecha_cierre: fechaLarga(ticket.closed_at ?? new Date().toISOString()),
+      url_formulario: links.formulario,
+      url_assets: links.assets,
+    },
+  })
+}
+
+export async function sendRejectedSample(to: string, name: string): Promise<{ ok: boolean; error: string | null }> {
+  const links = urls()
+  const opened = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+  const reparacion = "Prueba de correo: la persiana del aula no sube"
+  const subject = subjectRechazado("MF-PRUEBA", reparacion)
+  const motivo =
+    "Lo hemos revisado y ya está solucionado o funciona correctamente.\n\nSi ves que no es así, abre un nuevo parte."
+  if (!links) {
+    await record({ kind: "prueba", recipient: to, subject, ok: false, error: "Falta APP_PUBLIC_URL." })
+    return { ok: false, error: "Falta APP_PUBLIC_URL." }
+  }
+  return rendered({
+    kind: "prueba",
+    to,
+    subject,
+    htmlTemplate: rechazadoHtml,
+    textTemplate: rechazadoTxt,
+    vars: {
+      nombre: firstName(name) || "Fran",
+      codigo: "MF-PRUEBA",
+      reparacion,
+      lugar: "Aula 3",
+      fecha_apertura: fechaLarga(opened),
+      motivo,
       url_formulario: links.formulario,
       url_assets: links.assets,
     },
