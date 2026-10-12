@@ -6,7 +6,9 @@ import { Button } from "../../components/ui/Button"
 import { Textarea } from "../../components/ui/Field"
 import { Spinner } from "../../components/ui/Spinner"
 import { Materials } from "../../components/Materials"
+import { TicketPhotos, type TicketPhoto } from "../../components/TicketPhotos"
 import { eventLine, formatWhen, priorityLabel, statusLabel } from "../../domain/labels"
+import { LIMITS } from "../../domain/ticketRules"
 import { Confirm } from "../admin/Confirm"
 import type { TeamContextValue } from "./TeamShell"
 import styles from "./Team.module.css"
@@ -50,8 +52,6 @@ interface Ticket {
   description: string
   location: string
   requesterNotes: string | null
-  photoUrl: string | null
-  photoError?: boolean
   status: string
   priority: string | null
   assignee: string | null
@@ -71,13 +71,14 @@ const TERMINAL = new Set(["cerrado", "rechazado", "duplicado"])
 
 export function TeamTicket() {
   const { code = "" } = useParams()
-  const { call } = useOutletContext<TeamContextValue>()
+  const { call, upload } = useOutletContext<TeamContextValue>()
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [actorId, setActorId] = useState("")
   const [technicians, setTechnicians] = useState<Technician[]>([])
   const [notes, setNotes] = useState<Note[]>([])
   const [events, setEvents] = useState<HistoryEvent[]>([])
   const [materials, setMaterials] = useState<Material[]>([])
+  const [photos, setPhotos] = useState<TicketPhoto[]>([])
   const [note, setNote] = useState("")
   const [colleague, setColleague] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -99,6 +100,7 @@ export function TeamTicket() {
       notes: Note[]
       events: HistoryEvent[]
       materials: Material[]
+      photos: TicketPhoto[]
     }>("staff-ticket", { code: requested })
     if (seq !== loadSeq.current || requested !== codeRef.current) return
     setLoading(false)
@@ -114,6 +116,7 @@ export function TeamTicket() {
     setNotes(result.notes)
     setEvents(result.events)
     setMaterials(result.materials)
+    setPhotos(result.photos ?? [])
   }
 
   useEffect(() => {
@@ -121,6 +124,7 @@ export function TeamTicket() {
     setTicket(null)
     setColleague("")
     setNote("")
+    setPhotos([])
     setError(null)
     setNotice(null)
     setDialog(null)
@@ -218,11 +222,37 @@ export function TeamTicket() {
           <strong>Observaciones del solicitante: </strong>
           {ticket.requesterNotes?.replace(/\s+/g, " ").trim() || "Sin observaciones"}
         </p>
-        {ticket.photoUrl ? (
-          <img className={styles.photo} src={ticket.photoUrl} alt={`Foto del desperfecto de ${ticket.code}`} />
-        ) : (
-          <p className={styles.muted}>{ticket.photoError ? "No se ha podido cargar la foto." : "Sin foto."}</p>
-        )}
+        <TicketPhotos
+          code={ticket.code}
+          photos={photos}
+          busy={busy}
+          remaining={Math.max(0, LIMITS.photoTicketMax - photos.length)}
+          canDelete={(photo) => photo.uploadedById === actorId}
+          onAdd={async (blobs) => {
+            const viewed = viewedTicket()
+            if (!viewed) return false
+            const body = new FormData()
+            body.set("ticketId", viewed.id)
+            blobs.forEach((blob, index) => body.append("photo", blob, `foto-${index + 1}.jpg`))
+            setBusy(true)
+            setError(null)
+            const result = await upload("staff-add-photos", body)
+            if (viewed.code !== codeRef.current) return false
+            if (!result.ok) {
+              setBusy(false)
+              if (!result.expired) setError(result.message)
+              return false
+            }
+            await load()
+            setBusy(false)
+            setNotice("Foto añadida.")
+            return true
+          }}
+          onDelete={async (id) => {
+            const ok = await run("staff-delete-photo", { photoId: id }, "Foto borrada.")
+            return ok
+          }}
+        />
         {ticket.status === "rechazado" && ticket.rejectionReason && (
           <div>
             <h3>Motivo del rechazo</h3>

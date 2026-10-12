@@ -12,4 +12,6 @@ Fuente de diseño: esta carpeta. Copia idéntica para las Edge Functions: `supab
 
 Duplicado no envía correo.
 
+**Fran-nuevo.** Hasta 3 fotos. Variables: `{{foto}}` (nº; vacío si no hay), `{{foto1}}` `{{foto2}}` `{{foto3}}` (`cid:foto-1` …), `{{foto_titulo}}` `{{foto_pie}}` `{{foto_txt}}`. Añadir fotos después al parte no reenvía este correo.
+
 **Rechazado.** Asunto: `Sobre tu solicitud {{codigo}}: {{reparacion}}` (reparación a 60 caracteres). No uses la palabra «rechazada» en el asunto. `{{nombre}}` es solo el nombre de pila. `{{motivo}}` se escapa en HTML y los saltos de línea pasan a `<br>`; en el `.txt` va tal cual.

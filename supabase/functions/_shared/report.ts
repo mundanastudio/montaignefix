@@ -1,6 +1,7 @@
 import { sendNotice, sendReport } from "./email.ts"
 import { escapeHtml, fechaLarga } from "./email-render.mjs"
-import { admin, db } from "./http.ts"
+import { db } from "./http.ts"
+import { listTicketPhotoPaths, removeStorage } from "./photos.ts"
 import { buildReportPdf, type PdfTicket } from "./report-pdf.ts"
 
 const OPEN = ["nuevo", "asignado", "en_curso", "en_espera"]
@@ -114,16 +115,19 @@ function historyLine(type: string, oldValue: string | null, newValue: string | n
   if (type === "material_repuesto") return `Volvió a dejar pendiente: ${oldValue ?? ""}`
   if (type === "material_borrado") return `Borró el material: ${oldValue ?? ""}`
   if (type === "material_editado") return `Cambió el material «${oldValue ?? ""}» por «${newValue ?? ""}»`
+  if (type === "foto_anadida") return "Añadió una foto"
+  if (type === "foto_borrada") return "Borró una foto"
   return "Registró un cambio"
 }
 
 async function fichas(rows: Row[], staff: Map<string, string>): Promise<PdfTicket[]> {
   if (rows.length === 0) return []
   const ids = rows.map((row) => row.id)
-  const [materials, notes, events] = await Promise.all([
+  const [materials, notes, events, photos] = await Promise.all([
     db().from("shopping_items").select("ticket_id, description, status, created_at, purchased_at, requested_by, purchased_by").in("ticket_id", ids),
     db().from("ticket_notes").select("ticket_id, kind, body, created_at, author_id").in("ticket_id", ids).order("created_at", { ascending: false }),
     db().from("ticket_events").select("ticket_id, event_type, actor_label, old_value, new_value, created_at").in("ticket_id", ids).order("created_at", { ascending: false }),
+    db().from("ticket_photos").select("ticket_id").in("ticket_id", ids),
   ])
   const byTicket = (list: Array<Record<string, unknown>> | null) => {
     const map = new Map<string, Array<Record<string, unknown>>>()
@@ -136,6 +140,11 @@ async function fichas(rows: Row[], staff: Map<string, string>): Promise<PdfTicke
   const materialMap = byTicket(materials.data)
   const noteMap = byTicket(notes.data)
   const eventMap = byTicket(events.data)
+  const photoCount = new Map<string, number>()
+  for (const item of photos.data ?? []) {
+    const key = String(item.ticket_id)
+    photoCount.set(key, (photoCount.get(key) ?? 0) + 1)
+  }
   return rows.map((row) => ({
     code: row.code,
     title: clip(row.description, 90),
@@ -144,6 +153,7 @@ async function fichas(rows: Row[], staff: Map<string, string>): Promise<PdfTicke
       ["Solicitante", `${row.requester_name} · ${row.requester_email}`],
       ["Reparación", row.description],
       ["Observaciones del solicitante", row.requester_notes?.trim() || "Sin observaciones"],
+      ["Fotos", String(photoCount.get(row.id) ?? 0)],
       ["Abierta", when(row.created_at)],
       ["Asignada", when(row.assigned_at)],
       ["Resuelta", when(row.resolved_at)],
@@ -382,12 +392,11 @@ async function purge(now: Date): Promise<string> {
   })
   let removed = 0
   for (const row of doomed) {
-    if (typeof row.photo_path === "string" && row.photo_path) {
-      const { error: photoError } = await admin().storage.from("montaigne-fix-fotos").remove([row.photo_path])
-      if (photoError) {
-        console.error("purge-photo")
-        continue
-      }
+    const paths = await listTicketPhotoPaths(String(row.id))
+    const gone = await removeStorage(paths)
+    if (!gone.ok) {
+      console.error("purge-photo")
+      continue
     }
     await db().from("email_log").delete().eq("ticket_id", row.id)
     const { error } = await db().from("tickets").delete().eq("id", row.id)

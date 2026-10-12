@@ -28,16 +28,18 @@ const EMPTY = { name: "", email: "", description: "", location: "", notes: "" }
 export function RequestForm() {
   const [fields, setFields] = useState(EMPTY)
   const [rgpd, setRgpd] = useState(false)
-  const [photo, setPhoto] = useState<PhotoState | null>(null)
+  const [photos, setPhotos] = useState<PhotoState[]>([])
   const [compressing, setCompressing] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
+  const [photoNotice, setPhotoNotice] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const [done, setDone] = useState(false)
   const photoRequest = useRef(0)
-  const photoRef = useRef<PhotoState | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const photosRef = useRef<PhotoState[]>([])
+  const cameraRef = useRef<HTMLInputElement>(null)
+  const galleryRef = useRef<HTMLInputElement>(null)
   const rgpdId = useId()
   const [focusId, setFocusId] = useState<string | null>(null)
 
@@ -57,14 +59,16 @@ export function RequestForm() {
 
   useEffect(() => {
     return () => {
-      if (photoRef.current) URL.revokeObjectURL(photoRef.current.preview)
+      photosRef.current.forEach((item) => URL.revokeObjectURL(item.preview))
     }
   }, [])
 
-  function replacePhoto(next: PhotoState | null) {
-    if (photoRef.current) URL.revokeObjectURL(photoRef.current.preview)
-    photoRef.current = next
-    setPhoto(next)
+  function setPhotoList(next: PhotoState[]) {
+    photosRef.current.forEach((item) => {
+      if (!next.includes(item)) URL.revokeObjectURL(item.preview)
+    })
+    photosRef.current = next
+    setPhotos(next)
   }
 
   function set<K extends keyof typeof EMPTY>(key: K, value: string) {
@@ -77,41 +81,69 @@ export function RequestForm() {
     })
   }
 
-  async function onPhoto(file: File | undefined) {
+  async function onPhotos(list: FileList | null) {
     const request = ++photoRequest.current
     setPhotoError(null)
+    setPhotoNotice(null)
     setErrors((prev) => {
       if (!prev.photo) return prev
       const next = { ...prev }
       delete next.photo
       return next
     })
-    if (!file) return
+    if (!list || list.length === 0) return
+    const room = LIMITS.photoFormMax - photosRef.current.length
+    if (room <= 0) return
+    const chosen = [...list]
+    let notice: string | null = null
+    if (chosen.length > room) {
+      notice = "Solo se pueden enviar 3 fotos. Se quedan las 3 primeras."
+    }
+    const files = chosen.slice(0, room)
     setCompressing(true)
     try {
-      const blob = await compressImage(file)
-      if (request !== photoRequest.current) return
-      replacePhoto({ blob, preview: URL.createObjectURL(blob) })
+      const added: PhotoState[] = []
+      try {
+        for (const file of files) {
+          const blob = await compressImage(file)
+          added.push({ blob, preview: URL.createObjectURL(blob) })
+        }
+      } catch (error) {
+        added.forEach((item) => URL.revokeObjectURL(item.preview))
+        throw error
+      }
+      if (request !== photoRequest.current) {
+        added.forEach((item) => URL.revokeObjectURL(item.preview))
+        return
+      }
+      setPhotoList([...photosRef.current, ...added])
+      setPhotoNotice(notice)
     } catch (error) {
       if (request !== photoRequest.current) return
       setPhotoError(error instanceof Error ? error.message : "No se ha podido preparar la foto.")
     } finally {
       if (request === photoRequest.current) setCompressing(false)
+      if (cameraRef.current) cameraRef.current.value = ""
+      if (galleryRef.current) galleryRef.current.value = ""
     }
   }
 
-  function removePhoto() {
-    photoRequest.current += 1
-    setCompressing(false)
-    replacePhoto(null)
+  function removePhoto(index: number) {
+    setPhotoList(photosRef.current.filter((_, item) => item !== index))
     setPhotoError(null)
-    if (fileRef.current) fileRef.current.value = ""
+    setPhotoNotice(null)
   }
 
   function clearForm() {
     setFields(EMPTY)
     setRgpd(false)
-    removePhoto()
+    photoRequest.current += 1
+    setCompressing(false)
+    setPhotoList([])
+    setPhotoError(null)
+    setPhotoNotice(null)
+    if (cameraRef.current) cameraRef.current.value = ""
+    if (galleryRef.current) galleryRef.current.value = ""
     setErrors({})
     setFormError(null)
   }
@@ -146,7 +178,7 @@ export function RequestForm() {
 
     setSending(true)
     try {
-      const result = await createTicket(fields, photo?.blob ?? null)
+      const result = await createTicket(fields, photos.map((item) => item.blob))
       if (!result.ok) {
         if (result.fields) setErrors(result.fields)
         setFormError(result.message)
@@ -220,31 +252,55 @@ export function RequestForm() {
 
           <div className={styles.photo}>
             <p className={styles.photoLabel} id="foto-label">
-              Foto <span className={styles.optional}>(opcional)</span>
+              Fotos <span className={styles.optional}>(hasta 3, opcional)</span>
             </p>
             <Alert tone="warning">{PHOTO_WARNING}</Alert>
-            <label className={styles.fileLabel}>
-              <input
-                id="parte-photo"
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className={styles.file}
-                aria-labelledby="foto-label"
-                aria-invalid={errors.photo ? true : undefined}
-                aria-describedby={errors.photo ? "parte-photo-error" : undefined}
-                onChange={(e) => void onPhoto(e.target.files?.[0])}
-              />
-              {compressing ? "Preparando la foto…" : "Hacer o elegir una foto"}
-            </label>
-            {photo && (
-              <figure className={styles.preview}>
-                <img src={photo.preview} alt="Foto que se enviará con el parte" />
-                <Button variant="ghost" onClick={removePhoto}>
-                  Quitar foto
-                </Button>
-              </figure>
+            {photos.length < LIMITS.photoFormMax && (
+              <div className={styles.photoActions}>
+                <label className={styles.fileLabel}>
+                  <input
+                    id="parte-photo"
+                    ref={cameraRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className={styles.file}
+                    aria-labelledby="foto-label"
+                    aria-invalid={errors.photo ? true : undefined}
+                    aria-describedby={errors.photo ? "parte-photo-error" : undefined}
+                    onChange={(e) => void onPhotos(e.target.files)}
+                  />
+                  {compressing ? "Preparando la foto…" : "Hacer foto"}
+                </label>
+                <label className={styles.fileLabel}>
+                  <input
+                    ref={galleryRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className={styles.file}
+                    aria-labelledby="foto-label"
+                    onChange={(e) => void onPhotos(e.target.files)}
+                  />
+                  Elegir de la galería
+                </label>
+              </div>
             )}
+            {photos.length > 0 && (
+              <ul className={styles.previews}>
+                {photos.map((item, index) => (
+                  <li key={item.preview}>
+                    <figure className={styles.preview}>
+                      <img src={item.preview} alt={`Foto ${index + 1} que se enviará con el parte`} />
+                      <Button variant="ghost" onClick={() => removePhoto(index)}>
+                        Quitar
+                      </Button>
+                    </figure>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {photoNotice && <Alert tone="warning">{photoNotice}</Alert>}
             {(photoError || errors.photo) && (
               <p id="parte-photo-error" className={styles.photoError} role="alert">
                 {photoError ?? errors.photo}

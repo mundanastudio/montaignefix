@@ -30,11 +30,11 @@ Campos:
 - Email corporativo (obligatorio). Dominios exactos: `grupomontaigne.com`, `grupomontaignesevilla.com` y `mundana.us` (sin distinguir mayúsculas; se recortan espacios). Excepción: `curromena89@gmail.com`. Si no vale: «Debes utilizar un correo corporativo del Grupo Montaigne». Se guarda y se cuenta el tope de 3 partes / 24 h con el email ya normalizado. Al llegar al tope: «Debes esperar 24h para poder abrir un parte nuevo».
 - Reparación necesaria (obligatorio, texto)
 - Lugar (obligatorio, **texto libre**: aula, planta, patio, auditorio, baños…)
-- Foto (opcional, una; se puede hacer directamente con la cámara del móvil)
+- Fotos (opcional, hasta 3). Dos botones: **Hacer foto** (cámara trasera) y **Elegir de la galería** (varias a la vez). Miniaturas con **Quitar**. Si elige más de las que caben, aviso y se quedan las primeras.
 - Observaciones adicionales (opcional)
 - Casilla RGPD obligatoria (ver sección 8)
 
-Junto al campo de la foto, aviso visible: **"No fotografíes a alumnos ni a otras personas. Fotografía solo el desperfecto."**
+Junto al campo de las fotos, aviso visible: **"No fotografíes a alumnos ni a otras personas. Fotografía solo el desperfecto."**
 
 Al enviar → popup: **"Gracias, atenderemos tu solicitud lo antes posible. Recibirás un correo en tu email cuando esté solucionado."**, y se le envía el email de acuse de recibo (sección 6) y el formulario se limpia.
 
@@ -42,7 +42,8 @@ El solicitante **no ve el estado** de su parte: solo recibe el email final.
 
 ### 3.2 Panel del gerente — `/gestion`
 - Listado de todas las incidencias con filtros (estado, prioridad, asignado) y búsqueda por texto.
-- Ficha de cada incidencia con todos los datos, la foto y el historial completo.
+- Ficha de cada incidencia con todos los datos, la galería de fotos (miniaturas, visor a pantalla, deslizar / flechas) y el historial completo.
+- Puede añadir fotos (hasta 10 por parte, también si está cerrado) y borrar cualquiera, incluidas las del solicitante y las de un técnico.
 - Puede: asignar prioridad (P1/P2/P3), cambiar estado, asignar o reasignar a Fran/Agustín/Andrés, añadir **observaciones de gestión**, cerrar (desde cualquier estado abierto, sin pasar por Resuelto), reabrir, rechazar (con motivo obligatorio de 10–500 caracteres, que recibe el solicitante por email) o marcar como duplicado.
 - Al asignar se guarda la fecha de asignación (vía historial, sección 5).
 - Sección **"Lista de la compra"** (ver 3.4), con un contador de artículos pendientes visible en la navegación del panel.
@@ -54,6 +55,7 @@ El solicitante **no ve el estado** de su parte: solo recibe el email final.
   - sus **observaciones internas**.
 - Pueden **asignarse** una incidencia sin asignar, **quitarse** una que tengan y **reasignarla** a otro compañero.
 - Al marcar **Resuelto** se guarda la fecha de resolución y se avisa a Fran.
+- **Fotos**: pueden añadir (hasta 10 por parte, también si está cerrado). Solo pueden borrar las que han subido ellos. Las del solicitante las borra Gestión. Desde `/equipo`, Fran tampoco borra las de otro.
 - **Materiales** (ver 3.4): cualquier técnico puede añadir, editar y borrar artículos pendientes en **cualquier** parte abierto. En **Cerrado**, **Rechazado** o **Duplicado** el equipo solo los ve; no hay botones y el servidor rechaza cambios. Marcar comprado / volver a pendiente es solo de Gestión.
 
 ### 3.4 Lista de la compra
@@ -104,8 +106,10 @@ Cada incidencia tiene un código legible: **MF-0001, MF-0002…**
 Proyecto Supabase existente del usuario. Si ya aloja otra herramienta, crear todo en un **schema propio `montaigne_fix`**.
 
 Tablas mínimas (ajusta nombres si lo ves mejor, pero justifícalo):
-- `tickets`: id, código MF-XXXX, nombre y email del solicitante, reparación, lugar, observaciones del solicitante, ruta de la foto, estado, prioridad, técnico asignado, fechas (`created_at`, `assigned_at`, `resolved_at`, `closed_at`, `updated_at`), `rejection_reason` (motivo actual si está rechazado; se vacía al reabrir y se borra con el parte).
-- `ticket_events`: **historial** de todo cambio (quién, qué, valor anterior, valor nuevo, cuándo). Fuente de verdad para fechas y para los informes.
+- `tickets`: id, código MF-XXXX, nombre y email del solicitante, reparación, lugar, observaciones del solicitante, `photo_path` (antigua, deprecada; no se borra hasta confirmación), estado, prioridad, técnico asignado, fechas (`created_at`, `assigned_at`, `resolved_at`, `closed_at`, `updated_at`), `rejection_reason` (motivo actual si está rechazado; se vacía al reabrir y se borra con el parte).
+- `ticket_photos`: hasta 10 fotos por parte (`path`, `sort_order`, `uploaded_by` nulo = solicitante). Rutas nuevas `{ticket_id}/{uuid}.jpg`; las antiguas `{ticket_id}.jpg` se copian tal cual en la migración.
+- `storage_orphans`: rutas cuya fila se borró pero Storage no las quitó (para limpiar a mano).
+- `ticket_events`: **historial** de todo cambio (quién, qué, valor anterior, valor nuevo, cuándo). Fuente de verdad para fechas y para los informes. Incluye `foto_anadida` / `foto_borrada` cuando un técnico o Gestión añade o borra después (las del formulario no generan evento).
 - `ticket_notes`: observaciones con tipo (`gestion` | `interna`), autor y fecha. Las observaciones del solicitante van en `tickets`.
 - `staff`: Fran, Agustín, Andrés (y Curro como admin), con nombre, email y rol.
 - `shopping_items` (lista de la compra), un registro por artículo:
@@ -120,14 +124,14 @@ Tablas mínimas (ajusta nombres si lo ves mejor, pero justifícalo):
   - Cada alta, edición, compra, vuelta a pendiente o borrado se registra en `ticket_events` (tipo `material_solicitado`, `material_editado`, `material_comprado`, `material_repuesto`, `material_borrado`). El rechazo de un parte también queda en `ticket_events` (tipo `rechazo`, con el motivo; se conserva al reabrir).
   - El borrado de un artículo pendiente sí es físico (era un error); el resto es borrado lógico.
 
-**Fotos:** Supabase Storage, bucket **privado**. Comprimir en el navegador antes de subir (máx. ~1600 px de lado, JPEG ~0,7, objetivo < 500 KB). En la base de datos solo se guarda la ruta. Se muestran en los paneles con URLs firmadas temporales. **Nunca base64 en la base de datos.**
+**Fotos:** Supabase Storage, bucket **privado**. Comprimir en el navegador antes de subir (máx. ~1600 px de lado, JPEG ~0,7, objetivo < 500 KB). En la base de datos solo se guarda la ruta. Se muestran en los paneles con URLs firmadas temporales. **Nunca base64 en la base de datos.** `add_ticket_photos` / `insert_requester_photos` solo aceptan rutas que empiecen por `{ticket_id}/` de ese parte.
 
 **Seguridad (obligatorio):**
 - RLS activado en **todas** las tablas y en el bucket.
 - El navegador **no puede leer ni escribir directamente** ninguna tabla. Todo pasa por **Supabase Edge Functions** que usan la service role key (que nunca llega al navegador):
-  - `create-ticket` (público): valida, sube la foto, crea el parte y avisa a Fran.
-  - `staff-*` (requiere token de sesión del PIN + persona seleccionada). Incluye `staff-add-materials` (cualquier parte que no esté cerrado, rechazado o duplicado; divide por líneas e inserta todo en una transacción) y `staff-edit-material` / `staff-delete-material` (artículos pendientes de cualquier parte abierto; si ya está comprado o no existe: «Este material ya se ha comprado o se ha borrado. Recarga la ficha.»).
-  - `admin-*` (requiere token de sesión de la contraseña). Incluye `admin-shopping-list`, `admin-add-materials`, `admin-mark-purchased` (recibe una lista de ids; solo actualiza los que siguen pendientes, en una transacción, y devuelve cuántos cambió) y `admin-unmark-purchased`.
+  - `create-ticket` (público): valida, sube hasta 3 fotos, crea el parte y avisa a Fran.
+  - `staff-*` (requiere token de sesión del PIN + persona seleccionada). Incluye `staff-add-photos` / `staff-delete-photo` (`p_as_manager = false`: nadie, tampoco Fran, borra fotos que no haya subido él), `staff-add-materials` (cualquier parte que no esté cerrado, rechazado o duplicado; divide por líneas e inserta todo en una transacción) y `staff-edit-material` / `staff-delete-material` (artículos pendientes de cualquier parte abierto; si ya está comprado o no existe: «Este material ya se ha comprado o se ha borrado. Recarga la ficha.»).
+  - `admin-*` (requiere token de sesión de la contraseña). Incluye `admin-add-photos` / `admin-delete-photo` (`p_as_manager = true`, puede borrar cualquiera), `admin-shopping-list`, `admin-add-materials`, `admin-mark-purchased` (recibe una lista de ids; solo actualiza los que siguen pendientes, en una transacción, y devuelve cuántos cambió) y `admin-unmark-purchased`. Al borrar un parte: primero Storage; solo si eso va bien se borra la fila. Si Storage falla: «No se han podido borrar las fotos. El parte no se ha eliminado.»
 - PIN y contraseñas validados en el servidor con hash; sesión con token firmado y caducidad (p. ej. 30 días equipo, 7 días gerente).
 - Límite básico de intentos de PIN/contraseña.
 - Todas las migraciones como **archivos SQL versionados** en `supabase/migrations/`. El usuario las ejecuta (o se aplican con la CLI de Supabase). Nada creado "a mano" sin migración.
@@ -141,7 +145,7 @@ Solo se envían estos emails:
 | Momento | Destinatario | Contenido |
 |---|---|---|
 | Se abre un parte | Solicitante | Acuse de recibo: "ya estamos en ello", con el código MF-XXXX |
-| Se abre un parte | Fran | Todos los datos + la foto (incrustada y adjunta) |
+| Se abre un parte | Fran | Todos los datos + las fotos (hasta 3: incrustadas `cid:foto-1`… y adjuntas). Añadir fotos después no envía correo. |
 | Un técnico marca **Resuelto** | Fran | Aviso para que lo revise y lo cierre |
 | Fran marca **Cerrado** | Solicitante | "Tu solicitud MF-XXXX (reparación, lugar) ya está solucionada. Gracias." |
 | Fran marca **Rechazado** | Solicitante | Explica el motivo (el texto que escribió Gestión). Asunto: `Sobre tu solicitud MF-XXXX: …`. Marcar como duplicado no envía correo. |
@@ -155,7 +159,7 @@ Las plantillas HTML y de texto están en `assets/email/` y se copian a `supabase
 **Semanal — todos los miércoles a las 8:00 (hora de Madrid, respetando el cambio de hora):**
 - Email a Fran con una **tabla** de lo esencial: resueltas/cerradas en la semana y pendientes (código, reparación, lugar, prioridad, estado, asignado, fechas).
 - Bloque **"Pendiente de comprar"** en el email: artículos pendientes con incidencia, quién lo pidió y desde cuándo.
-- **PDF adjunto** con el detalle completo de cada incidencia: fechas, estado, prioridad, asignado, todas las observaciones, materiales (pendientes y comprados) e historial.
+- **PDF adjunto** con el detalle completo de cada incidencia: fechas, estado, prioridad, asignado, todas las observaciones, **Fotos: N** (sin incrustar imágenes), materiales (pendientes y comprados) e historial.
 - Programado con `pg_cron` en Supabase llamando a una Edge Function (o GitHub Actions si es más fiable). Todo en plan gratuito.
 
 **Anual — 1 de julio (fin de curso):**
@@ -167,7 +171,7 @@ Las plantillas HTML y de texto están en `assets/email/` y se copian a `supabase
 
 - Casilla obligatoria en el formulario. El texto está en `src/content/rgpd.ts`: «He leído y acepto que Grupo Montaigne (responsable) trate mi nombre y mi email para gestionar la reparación y avisarme cuando esté solucionada. Los datos se conservan 12 meses. Para ejercer tus derechos de acceso, rectificación o supresión escribe a soportemundanastudio@mundana.us». El texto legal definitivo del colegio sigue pendiente (sección 11).
 - Aviso de no fotografiar personas (ver 3.1).
-- **Borrado automático**: solo las incidencias **resueltas** o **cerradas** hace más de 12 meses. Se borran con sus fotos, notas, materiales, historial y el registro de correos de ese parte (destinatario y asunto). No se borran las abiertas, sin asignar, en curso, en espera, rechazadas ni duplicadas, aunque haya pasado un año. El borrado se ejecuta **después** de un informe anual enviado bien, así ninguna se borra sin haber salido en un informe. Si el informe anual falla, se avisa a Curro y no se borra nada nuevo hasta que el informe salga.
+- **Borrado automático**: solo las incidencias **resueltas** o **cerradas** hace más de 12 meses. Se borran con sus fotos, notas, materiales, historial y el registro de correos de ese parte (destinatario y asunto). Primero Storage; si falla, ese parte no se borra. No se borran las abiertas, sin asignar, en curso, en espera, rechazadas ni duplicadas, aunque haya pasado un año. El borrado se ejecuta **después** de un informe anual enviado bien, así ninguna se borra sin haber salido en un informe. Si el informe anual falla, se avisa a Curro y no se borra nada nuevo hasta que el informe salga. Al borrar una sola foto: primero la fila; si Storage falla, se anota en `storage_orphans`.
 - Las IPs de intentos de acceso y de los topes del formulario se guardan como mucho 2 días.
 - `noindex` y `robots.txt` para que no aparezca en buscadores.
 

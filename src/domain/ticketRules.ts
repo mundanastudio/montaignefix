@@ -9,6 +9,8 @@ export const LIMITS = {
   notes: 2000,
   /** Objetivo de compresión en el navegador. */
   photoBytes: 500 * 1024,
+  photoFormMax: 3,
+  photoTicketMax: 10,
 } as const
 
 export const PHOTO_WARNING = "No fotografíes a alumnos ni a otras personas. Fotografía solo el desperfecto."

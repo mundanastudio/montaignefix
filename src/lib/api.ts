@@ -27,7 +27,7 @@ export interface CreateTicketFailure {
 
 export async function createTicket(
   input: CreateTicketInput,
-  photo: Blob | null,
+  photos: Blob[],
 ): Promise<CreateTicketResult | CreateTicketFailure> {
   const base = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, "")
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -44,7 +44,7 @@ export async function createTicket(
   body.set("description", input.description.trim())
   body.set("location", input.location.trim())
   body.set("notes", input.notes.trim())
-  if (photo) body.set("photo", photo, "foto.jpg")
+  photos.forEach((photo, index) => body.append("photo", photo, `foto-${index + 1}.jpg`))
 
   let response: Response
   try {

@@ -11,7 +11,8 @@
   Montaigne Fix · Email a FRAN cuando se abre un parte.
   Variables: {{codigo}} {{reparacion}} {{lugar}} {{nombre}} {{email}} {{fecha_apertura}} (con hora)
              {{observaciones}} (opcional)
-             {{foto}} (opcional) -> "cid:foto-parte" si la foto va incrustada como adjunto CID
+             {{foto}} (opcional, nº de fotos) {{foto1}} {{foto2}} {{foto3}} (cid:foto-1 …)
+             {{foto_titulo}} {{foto_pie}}
              {{url_ticket}} -> /gestion con la ficha del parte abierta
              {{pendientes_sin_asignar}} -> nº de partes en estado Nuevo, incluido este
              {{url_assets}}
@@ -126,9 +127,17 @@
 <!--IF:foto-->
         <tr>
           <td class="px" style="padding:20px 40px 0 40px;">
-            <p style="margin:0 0 10px 0;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;line-height:16px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;color:#5b6483;">Foto del desperfecto</p>
-            <img class="foto" src="{{foto}}" width="520" alt="Foto adjunta por {{nombre}}" style="width:520px;max-width:100%;height:auto;border-radius:10px;border:1px solid #dfe3ee;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:14px;color:#5b6483;">
-            <p style="margin:8px 0 0 0;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#8a92ad;">También va adjunta a este correo.</p>
+            <p style="margin:0 0 10px 0;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;line-height:16px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;color:#5b6483;">{{foto_titulo}}</p>
+<!--IF:foto1-->
+            <img class="foto" src="{{foto1}}" width="520" alt="Foto adjunta por {{nombre}}" style="width:520px;max-width:100%;height:auto;border-radius:10px;border:1px solid #dfe3ee;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:14px;color:#5b6483;">
+<!--ENDIF:foto1-->
+<!--IF:foto2-->
+            <img class="foto" src="{{foto2}}" width="520" alt="Foto adjunta por {{nombre}}" style="width:520px;max-width:100%;height:auto;margin-top:12px;border-radius:10px;border:1px solid #dfe3ee;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:14px;color:#5b6483;">
+<!--ENDIF:foto2-->
+<!--IF:foto3-->
+            <img class="foto" src="{{foto3}}" width="520" alt="Foto adjunta por {{nombre}}" style="width:520px;max-width:100%;height:auto;margin-top:12px;border-radius:10px;border:1px solid #dfe3ee;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:14px;color:#5b6483;">
+<!--ENDIF:foto3-->
+            <p style="margin:8px 0 0 0;font-family:'Century Gothic','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#8a92ad;">{{foto_pie}}</p>
           </td>
         </tr>
 <!--ENDIF:foto-->

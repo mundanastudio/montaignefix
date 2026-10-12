@@ -75,6 +75,10 @@ export function eventLine(event: { type: string; old: string | null; new: string
       return `Cambió el material «${event.old ?? ""}» por «${event.new ?? ""}»`
     case "rechazo":
       return `Rechazó el parte: «${event.new ?? ""}»`
+    case "foto_anadida":
+      return "Añadió una foto"
+    case "foto_borrada":
+      return "Borró una foto"
     default:
       return "Registró un cambio"
   }

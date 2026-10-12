@@ -100,6 +100,12 @@ const fran = {
   fecha_apertura: "12 de octubre de 2026, 12:00",
   observaciones: "",
   foto: "",
+  foto1: "",
+  foto2: "",
+  foto3: "",
+  foto_titulo: "Foto del desperfecto",
+  foto_pie: "También va adjunta a este correo.",
+  foto_txt: "Foto: adjunta a este correo.",
   url_ticket: "https://ejemplo.pages.dev/gestion/MF-0042",
   pendientes_sin_asignar: "2",
   url_assets: "https://ejemplo.pages.dev/email",
@@ -107,13 +113,54 @@ const fran = {
 const franHtml = render(readFileSync(join(dir, "fran-nuevo.html"), "utf8"), fran, true)
 assert.equal(franHtml.includes("Observaciones"), false)
 assert.equal(franHtml.includes('src="cid:foto-parte"'), false)
+assert.equal(franHtml.includes('src="cid:foto-1"'), false)
 assert.equal(franHtml.includes("&lt;script&gt;"), true)
 assert.equal(franHtml.includes("{{"), false)
 assert.throws(() => render("Hola {{nombre}} {{falta}}", { nombre: "Ana" }, false), /Falta rellenar \{\{falta\}\}/)
 
-const withPhoto = render(readFileSync(join(dir, "fran-nuevo.html"), "utf8"), { ...fran, observaciones: "Hace ruido", foto: "cid:foto-parte" }, true)
-assert.equal(withPhoto.includes('src="cid:foto-parte"'), true)
+const withPhoto = render(
+  readFileSync(join(dir, "fran-nuevo.html"), "utf8"),
+  {
+    ...fran,
+    observaciones: "Hace ruido",
+    foto: "1",
+    foto1: "cid:foto-1",
+  },
+  true,
+)
+assert.equal(withPhoto.includes('src="cid:foto-1"'), true)
+assert.equal(withPhoto.includes('src="cid:foto-2"'), false)
+assert.equal(withPhoto.includes("cid:foto-parte"), false)
+assert.equal(withPhoto.includes("Foto del desperfecto"), true)
+assert.equal(withPhoto.includes("Fotos del desperfecto"), false)
+assert.equal(withPhoto.includes("También va adjunta"), true)
 assert.equal(withPhoto.includes("Hace ruido"), true)
+
+const withThree = render(
+  readFileSync(join(dir, "fran-nuevo.html"), "utf8"),
+  {
+    ...fran,
+    foto: "3",
+    foto1: "cid:foto-1",
+    foto2: "cid:foto-2",
+    foto3: "cid:foto-3",
+    foto_titulo: "Fotos del desperfecto",
+    foto_pie: "También van adjuntas a este correo.",
+    foto_txt: "Fotos: adjuntas a este correo.",
+  },
+  true,
+)
+assert.equal(withThree.includes('src="cid:foto-1"'), true)
+assert.equal(withThree.includes('src="cid:foto-2"'), true)
+assert.equal(withThree.includes('src="cid:foto-3"'), true)
+assert.equal(withThree.includes("Fotos del desperfecto"), true)
+assert.equal(withThree.includes("También van adjuntas"), true)
+const withThreeTxt = render(readFileSync(join(dir, "fran-nuevo.txt"), "utf8"), {
+  ...fran,
+  foto: "3",
+  foto_txt: "Fotos: adjuntas a este correo.",
+}, false)
+assert.equal(withThreeTxt.includes("Fotos: adjuntas a este correo."), true)
 
 const resuelto = render(
   readFileSync(join(dir, "fran-resuelto.html"), "utf8"),

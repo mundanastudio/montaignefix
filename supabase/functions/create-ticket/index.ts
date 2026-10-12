@@ -4,9 +4,9 @@ import { createClient } from "npm:@supabase/supabase-js@2"
 import { EMAIL_LIMIT_MESSAGE, normalizeEmail, requesterEmailFieldError } from "../_shared/allowedEmails.ts"
 import { notifyNew, sendNotice } from "../_shared/email.ts"
 import { clientIp } from "../_shared/http.ts"
+import { MAX_FORM_PHOTOS, MAX_PHOTO_BYTES, removeStorage, uploadTicketPhotos } from "../_shared/photos.ts"
 
 const LIMITS = { name: 120, email: 254, description: 2000, location: 200, notes: 2000 }
-const MAX_PHOTO_BYTES = 1_500_000
 const RATE_LIMIT = 3
 const HOUR_LIMIT = 10
 const DAY_IP_LIMIT = 30
@@ -72,17 +72,21 @@ Deno.serve(async (req) => {
   if (chars(notes) > LIMITS.notes) fields.notes = `Las observaciones no pueden pasar de ${LIMITS.notes} caracteres.`
   if (Object.keys(fields).length > 0) return fieldError(fields)
 
-  const photo = form.get("photo")
-  let photoBytes: Uint8Array | null = null
-  if (photo instanceof File && photo.size > 0) {
+  const photoFiles = form.getAll("photo").filter((item): item is File => item instanceof File && item.size > 0)
+  if (photoFiles.length > MAX_FORM_PHOTOS) {
+    return json(400, { ok: false, message: "Puedes enviar como máximo 3 fotos.", fields: { photo: "Puedes enviar como máximo 3 fotos." } })
+  }
+  const images: Uint8Array[] = []
+  for (const photo of photoFiles) {
     if (photo.size > MAX_PHOTO_BYTES) {
       return json(413, { ok: false, message: "La foto es demasiado grande. Hazla de nuevo.", fields: { photo: "La foto es demasiado grande." } })
     }
-    photoBytes = new Uint8Array(await photo.arrayBuffer())
-    const jpeg = photoBytes.length >= 3 && photoBytes[0] === 0xff && photoBytes[1] === 0xd8 && photoBytes[2] === 0xff
+    const bytes = new Uint8Array(await photo.arrayBuffer())
+    const jpeg = bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
     if (!jpeg) {
       return json(400, { ok: false, message: "La foto tiene que ser una imagen JPG.", fields: { photo: "La foto tiene que ser una imagen JPG." } })
     }
+    images.push(bytes)
   }
 
   const admin = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", {
@@ -152,14 +156,11 @@ Deno.serve(async (req) => {
   }
 
   const id = crypto.randomUUID()
-  const photoPath = photoBytes ? `${id}.jpg` : null
-  if (photoBytes && photoPath) {
-    const { error: uploadError } = await admin.storage.from("montaigne-fix-fotos").upload(photoPath, photoBytes, {
-      contentType: "image/jpeg",
-      upsert: false,
-    })
-    if (uploadError) {
-      console.error("upload", uploadError.message)
+  let photoPaths: string[] = []
+  if (images.length > 0) {
+    try {
+      photoPaths = await uploadTicketPhotos(id, images)
+    } catch {
       return json(500, { ok: false, message: "No se ha podido guardar la foto. Inténtalo de nuevo." })
     }
   }
@@ -171,12 +172,21 @@ Deno.serve(async (req) => {
     description,
     location,
     requester_notes: notes || null,
-    photo_path: photoPath,
   })
   if (insertError) {
     console.error("insert", insertError.code)
-    if (photoPath) await admin.storage.from("montaigne-fix-fotos").remove([photoPath])
+    await removeStorage(photoPaths)
     return json(500, { ok: false, message: "No se ha podido crear el parte. Inténtalo de nuevo." })
+  }
+
+  if (photoPaths.length > 0) {
+    const { error: photosError } = await db.rpc("insert_requester_photos", { p_ticket: id, p_paths: photoPaths })
+    if (photosError) {
+      console.error("fotos", photosError.code)
+      await db.from("tickets").delete().eq("id", id)
+      await removeStorage(photoPaths)
+      return json(500, { ok: false, message: "No se ha podido crear el parte. Inténtalo de nuevo." })
+    }
   }
 
   const { data: created } = await db.from("tickets").select("code, created_at").eq("id", id).maybeSingle()
@@ -189,7 +199,7 @@ Deno.serve(async (req) => {
     location,
     notes,
     createdAt: typeof created?.created_at === "string" ? created.created_at : new Date().toISOString(),
-    photo: photoBytes,
+    photos: images,
   })
   if (!exempt) {
     await db.from("submission_ips").insert({ ip: clientIp(req) })

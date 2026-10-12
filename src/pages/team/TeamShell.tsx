@@ -15,7 +15,7 @@ import {
   teamToken,
   type Person,
 } from "../../lib/authApi"
-import { teamPost, type TeamResponse } from "../../lib/teamApi"
+import { teamPost, teamUpload, type TeamResponse } from "../../lib/teamApi"
 import access from "../Access.module.css"
 import styles from "./Team.module.css"
 
@@ -24,6 +24,7 @@ type Step = "loading" | "pin" | "who" | "in"
 export interface TeamContextValue {
   person: Person
   call: <T>(name: string, body?: Record<string, unknown>) => Promise<TeamResponse<T>>
+  upload: <T>(name: string, body: FormData) => Promise<TeamResponse<T>>
 }
 
 export function TeamShell() {
@@ -58,6 +59,18 @@ export function TeamShell() {
 
   const call = useCallback(function callTeam<T>(name: string, body: Record<string, unknown> = {}): Promise<TeamResponse<T>> {
     return teamPost<T>(name, body).then((result) => {
+      if (!result.ok && result.expired) {
+        clearTeam()
+        setPerson(null)
+        setError(result.message)
+        setStep("pin")
+      }
+      return result
+    })
+  }, [])
+
+  const upload = useCallback(function uploadTeam<T>(name: string, body: FormData): Promise<TeamResponse<T>> {
+    return teamUpload<T>(name, body).then((result) => {
       if (!result.ok && result.expired) {
         clearTeam()
         setPerson(null)
@@ -183,7 +196,7 @@ export function TeamShell() {
           </Button>
         </div>
       )}
-      <Outlet context={{ person, call } satisfies TeamContextValue} />
+      <Outlet context={{ person, call, upload } satisfies TeamContextValue} />
     </div>
   )
 }

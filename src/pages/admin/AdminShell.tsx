@@ -5,7 +5,7 @@ import { Button } from "../../components/ui/Button"
 import { Card } from "../../components/ui/Card"
 import { Input } from "../../components/ui/Field"
 import { Spinner } from "../../components/ui/Spinner"
-import { adminPost, type AdminResponse } from "../../lib/adminApi"
+import { adminPost, adminUpload, type AdminResponse } from "../../lib/adminApi"
 import { adminToken, clearAdmin, currentSession, loginAdmin, type Person } from "../../lib/authApi"
 import access from "../Access.module.css"
 import { Confirm } from "./Confirm"
@@ -22,6 +22,7 @@ export interface AdminContextValue {
   person: Person
   pendingCount: number | null
   call: <T>(name: string, body?: Record<string, unknown>) => Promise<AdminResponse<T>>
+  upload: <T>(name: string, body: FormData) => Promise<AdminResponse<T>>
 }
 
 export function AdminShell() {
@@ -70,6 +71,17 @@ export function AdminShell() {
         return result
       }
       if (typeof result.pendingCount === "number") setPendingCount(result.pendingCount)
+      return result
+    })
+  }, [])
+
+  const upload = useCallback(function uploadAdmin<T>(name: string, body: FormData): Promise<AdminResponse<T>> {
+    return adminUpload<T>(name, body).then((result) => {
+      if (!result.ok && result.expired) {
+        clearAdmin()
+        setPerson(null)
+        setError(result.message)
+      }
       return result
     })
   }, [])
@@ -190,7 +202,7 @@ export function AdminShell() {
   }
 
   const shopping = location.pathname.startsWith("/gestion/compra")
-  const context: AdminContextValue = { person, pendingCount, call }
+  const context: AdminContextValue = { person, pendingCount, call, upload }
 
   return (
     <div className={styles.panel}>

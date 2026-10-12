@@ -9,6 +9,8 @@ import { eventLine, formatWhen, priorityLabel, statusLabel } from "../../domain/
 import { REASON_MAX, REJECT_PRESETS, reasonReady, trimmedReason } from "../../domain/rejectReason"
 import type { AdminContextValue } from "./AdminShell"
 import { Materials } from "../../components/Materials"
+import { TicketPhotos, type TicketPhoto } from "../../components/TicketPhotos"
+import { LIMITS } from "../../domain/ticketRules"
 import { Confirm } from "./Confirm"
 import styles from "./Admin.module.css"
 
@@ -52,8 +54,6 @@ interface Ticket {
   description: string
   location: string
   requesterNotes: string | null
-  photoUrl: string | null
-  photoError?: boolean
   status: string
   priority: string | null
   assignee: string | null
@@ -78,12 +78,13 @@ export function TicketDetail() {
   const navigate = useNavigate()
   const { code = "" } = useParams()
   const [params] = useSearchParams()
-  const { call } = useOutletContext<AdminContextValue>()
+  const { call, upload } = useOutletContext<AdminContextValue>()
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [technicians, setTechnicians] = useState<Technician[]>([])
   const [notes, setNotes] = useState<Note[]>([])
   const [events, setEvents] = useState<HistoryEvent[]>([])
   const [materials, setMaterials] = useState<Material[]>([])
+  const [photos, setPhotos] = useState<TicketPhoto[]>([])
   const [assignee, setAssignee] = useState("")
   const [note, setNote] = useState("")
   const [duplicateCode, setDuplicateCode] = useState("")
@@ -100,10 +101,14 @@ export function TicketDetail() {
   async function load() {
     const seq = ++loadSeq.current
     const requested = codeRef.current
-    const result = await call<{ ticket: Ticket; technicians: Technician[]; notes: Note[]; events: HistoryEvent[]; materials: Material[] }>(
-      "admin-ticket",
-      { code: requested },
-    )
+    const result = await call<{
+      ticket: Ticket
+      technicians: Technician[]
+      notes: Note[]
+      events: HistoryEvent[]
+      materials: Material[]
+      photos: TicketPhoto[]
+    }>("admin-ticket", { code: requested })
     if (seq !== loadSeq.current || requested !== codeRef.current) return
     setLoading(false)
     if (!result.ok) {
@@ -117,6 +122,7 @@ export function TicketDetail() {
     setNotes(result.notes)
     setEvents(result.events)
     setMaterials(result.materials)
+    setPhotos(result.photos ?? [])
     setAssignee(result.ticket.assigneeId ?? "")
   }
 
@@ -127,6 +133,7 @@ export function TicketDetail() {
     setNote("")
     setDuplicateCode("")
     setRejectReason("")
+    setPhotos([])
     setError(null)
     setNotice(null)
     setDialog(null)
@@ -251,12 +258,37 @@ export function TicketDetail() {
           <strong>Observaciones del solicitante: </strong>
           {ticket.requesterNotes?.replace(/\s+/g, " ").trim() || "Sin observaciones"}
         </p>
-        <h3>Foto</h3>
-        {ticket.photoUrl ? (
-          <img className={styles.photo} src={ticket.photoUrl} alt={`Foto del desperfecto de ${ticket.code}`} />
-        ) : (
-          <p className={styles.muted}>{ticket.photoError ? "No se ha podido cargar la foto." : "Sin foto."}</p>
-        )}
+        <TicketPhotos
+          code={ticket.code}
+          photos={photos}
+          busy={busy}
+          remaining={Math.max(0, LIMITS.photoTicketMax - photos.length)}
+          canDelete={() => true}
+          onAdd={async (blobs) => {
+            const viewed = viewedTicket()
+            if (!viewed) return false
+            const body = new FormData()
+            body.set("ticketId", viewed.id)
+            blobs.forEach((blob, index) => body.append("photo", blob, `foto-${index + 1}.jpg`))
+            setBusy(true)
+            setError(null)
+            const result = await upload("admin-add-photos", body)
+            if (viewed.code !== codeRef.current) return false
+            if (!result.ok) {
+              setBusy(false)
+              if (!result.expired) setError(result.message)
+              return false
+            }
+            await load()
+            setBusy(false)
+            setNotice("Foto añadida.")
+            return true
+          }}
+          onDelete={async (id) => {
+            const ok = await run("admin-delete-photo", { photoId: id }, "Foto borrada.")
+            return ok
+          }}
+        />
         <p>
           {ticket.requesterName} · <a href={`mailto:${ticket.requesterEmail}`}>{ticket.requesterEmail}</a>
         </p>
@@ -494,7 +526,7 @@ export function TicketDetail() {
         onAccept={() => void removeTicket()}
       >
         <p>
-          Vas a borrar {ticket.code}. Se eliminan la foto, las notas, los materiales, el historial y los correos de este parte. No se puede deshacer. El código no se volverá a usar.
+          Vas a borrar {ticket.code}. Se eliminan las fotos, las notas, los materiales, el historial y los correos de este parte. No se puede deshacer. El código no se volverá a usar.
         </p>
       </Confirm>
       <Confirm

@@ -9,7 +9,7 @@ export interface TeamFailure {
 export type TeamSuccess<T> = { ok: true } & T
 export type TeamResponse<T> = TeamSuccess<T> | TeamFailure
 
-export async function teamPost<T>(name: string, body: Record<string, unknown> = {}): Promise<TeamResponse<T>> {
+async function teamRequest<T>(name: string, init: RequestInit): Promise<TeamResponse<T>> {
   const base = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, "")
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY
   const token = teamToken()
@@ -20,12 +20,12 @@ export async function teamPost<T>(name: string, body: Record<string, unknown> = 
   try {
     response = await fetch(`${base}/functions/v1/${name}`, {
       method: "POST",
+      ...init,
       headers: {
         apikey: key,
         Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+        ...(init.headers ?? {}),
       },
-      body: JSON.stringify(body),
     })
   } catch {
     return { ok: false, message: "No hay conexión. Inténtalo de nuevo.", expired: false }
@@ -47,4 +47,15 @@ export async function teamPost<T>(name: string, body: Record<string, unknown> = 
     }
   }
   return payload
+}
+
+export function teamPost<T>(name: string, body: Record<string, unknown> = {}): Promise<TeamResponse<T>> {
+  return teamRequest<T>(name, {
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+}
+
+export function teamUpload<T>(name: string, body: FormData): Promise<TeamResponse<T>> {
+  return teamRequest<T>(name, { body })
 }

@@ -36,8 +36,7 @@ interface Outgoing {
   subject: string
   html: string
   text: string
-  photo?: Uint8Array | null
-  photoName?: string
+  photos?: Array<{ bytes: Uint8Array; name: string; cid: string }>
   pdf?: Uint8Array | null
   pdfName?: string
 }
@@ -125,8 +124,7 @@ async function deliver(message: Outgoing): Promise<void> {
     subject: message.subject,
     text: message.text,
     html: message.html,
-    photo: message.photo,
-    photoName: message.photoName,
+    photos: message.photos,
     pdf: message.pdf,
     pdfName: message.pdfName,
   })
@@ -153,8 +151,7 @@ function buildMime(input: {
   subject: string
   text: string
   html: string
-  photo?: Uint8Array | null
-  photoName?: string
+  photos?: Array<{ bytes: Uint8Array; name: string; cid: string }>
   pdf?: Uint8Array | null
   pdfName?: string
 }): string {
@@ -195,10 +192,11 @@ function buildMime(input: {
           "",
         ]
       : []
-  if (!input.photo && !input.pdf) {
+  const photos = input.photos ?? []
+  if (photos.length === 0 && !input.pdf) {
     return [...headers, `Content-Type: multipart/alternative; boundary="${alt}"`, "", ...alternative, ""].join("\r\n")
   }
-  if (!input.photo) {
+  if (photos.length === 0) {
     const mix = `mf-mix-${crypto.randomUUID()}`
     return [
       ...headers,
@@ -216,8 +214,31 @@ function buildMime(input: {
   }
   const mix = `mf-mix-${crypto.randomUUID()}`
   const rel = `mf-rel-${crypto.randomUUID()}`
-  const file = input.photoName ?? "foto.jpg"
-  const photo64 = wrapBase64(bytesToBase64(input.photo))
+  const inline = photos.flatMap((photo) => {
+    const photo64 = wrapBase64(bytesToBase64(photo.bytes))
+    return [
+      `--${rel}`,
+      `Content-Type: image/jpeg; name="${photo.name}"`,
+      "Content-Transfer-Encoding: base64",
+      `Content-ID: <${photo.cid}>`,
+      `Content-Disposition: inline; filename="${photo.name}"`,
+      "",
+      photo64,
+      "",
+    ]
+  })
+  const attached = photos.flatMap((photo) => {
+    const photo64 = wrapBase64(bytesToBase64(photo.bytes))
+    return [
+      `--${mix}`,
+      `Content-Type: image/jpeg; name="${photo.name}"`,
+      "Content-Transfer-Encoding: base64",
+      `Content-Disposition: attachment; filename="${photo.name}"`,
+      "",
+      photo64,
+      "",
+    ]
+  })
   return [
     ...headers,
     `Content-Type: multipart/mixed; boundary="${mix}"`,
@@ -230,23 +251,10 @@ function buildMime(input: {
     "",
     ...alternative,
     "",
-    `--${rel}`,
-    `Content-Type: image/jpeg; name="${file}"`,
-    "Content-Transfer-Encoding: base64",
-    "Content-ID: <foto-parte>",
-    `Content-Disposition: inline; filename="${file}"`,
-    "",
-    photo64,
-    "",
+    ...inline,
     `--${rel}--`,
     ...pdfPart(mix),
-    `--${mix}`,
-    `Content-Type: image/jpeg; name="${file}"`,
-    "Content-Transfer-Encoding: base64",
-    `Content-Disposition: attachment; filename="${file}"`,
-    "",
-    photo64,
-    "",
+    ...attached,
     `--${mix}--`,
     "",
   ].join("\r\n")
@@ -381,8 +389,7 @@ async function rendered(input: {
   htmlTemplate: string
   textTemplate: string
   vars: Record<string, string>
-  photo?: Uint8Array | null
-  photoName?: string
+  photos?: Array<{ bytes: Uint8Array; name: string; cid: string }>
 }): Promise<{ ok: boolean; error: string | null }> {
   let html = ""
   let text = ""
@@ -400,8 +407,7 @@ async function rendered(input: {
     subject: input.subject,
     html,
     text,
-    photo: input.photo,
-    photoName: input.photoName,
+    photos: input.photos,
   }
   const primary = await send({ ...message, to: input.to })
   return primary
@@ -420,7 +426,7 @@ export async function notifyNew(input: {
   location: string
   notes: string
   createdAt: string
-  photo: Uint8Array | null
+  photos: Uint8Array[]
 }): Promise<void> {
   const links = urls()
   const fran = await managerEmail()
@@ -437,6 +443,8 @@ export async function notifyNew(input: {
   }
   const { count } = await db().from("tickets").select("id", { count: "exact", head: true }).eq("status", "nuevo")
   const comunes = { url_assets: links.assets }
+  const n = input.photos.length
+  const several = n > 1
   await rendered({
     kind: "recibido",
     ticketId: input.ticketId,
@@ -470,12 +478,21 @@ export async function notifyNew(input: {
       email: plain(input.email),
       fecha_apertura: fechaConHora(input.createdAt),
       observaciones,
-      foto: input.photo ? "cid:foto-parte" : "",
+      foto: n > 0 ? String(n) : "",
+      foto1: n >= 1 ? "cid:foto-1" : "",
+      foto2: n >= 2 ? "cid:foto-2" : "",
+      foto3: n >= 3 ? "cid:foto-3" : "",
+      foto_titulo: several ? "Fotos del desperfecto" : "Foto del desperfecto",
+      foto_pie: several ? "También van adjuntas a este correo." : "También va adjunta a este correo.",
+      foto_txt: several ? "Fotos: adjuntas a este correo." : "Foto: adjunta a este correo.",
       url_ticket: ticketUrl(links, input.code),
       pendientes_sin_asignar: String(count ?? 1),
     },
-    photo: input.photo,
-    photoName: `foto-${input.code}.jpg`,
+    photos: input.photos.map((bytes, index) => ({
+      bytes,
+      name: `foto-${index + 1}-${input.code}.jpg`,
+      cid: `foto-${index + 1}`,
+    })),
   })
 }
 

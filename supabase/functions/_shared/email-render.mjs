@@ -91,9 +91,15 @@ function empty(value) {
   return text === "" || text === "0"
 }
 
-/** Quita el bloque entero si la variable está vacía o es 0. */
+/** Quita el bloque entero si la variable está vacía o es 0. Repite por si hay bloques anidados. */
 export function stripOptional(template, vars) {
-  return template.replace(/<!--IF:(\w+)-->([\s\S]*?)<!--ENDIF:\1-->/g, (_, key, block) => (empty(vars[key]) ? "" : block))
+  let current = template
+  for (let pass = 0; pass < 5; pass++) {
+    const next = current.replace(/<!--IF:(\w+)-->([\s\S]*?)<!--ENDIF:\1-->/g, (_, key, block) => (empty(vars[key]) ? "" : block))
+    if (next === current) return next
+    current = next
+  }
+  return current
 }
 
 /** Una sola pasada: lo que escribe el usuario no puede reinyectar otra variable. */

@@ -9,7 +9,7 @@ export interface AdminFailure {
 export type AdminSuccess<T> = { ok: true } & T
 export type AdminResponse<T> = AdminSuccess<T> | AdminFailure
 
-export async function adminPost<T>(name: string, body: Record<string, unknown> = {}): Promise<AdminResponse<T>> {
+async function adminRequest<T>(name: string, init: RequestInit): Promise<AdminResponse<T>> {
   const base = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, "")
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY
   const token = adminToken()
@@ -20,12 +20,12 @@ export async function adminPost<T>(name: string, body: Record<string, unknown> =
   try {
     response = await fetch(`${base}/functions/v1/${name}`, {
       method: "POST",
+      ...init,
       headers: {
         apikey: key,
         Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+        ...(init.headers ?? {}),
       },
-      body: JSON.stringify(body),
     })
   } catch {
     return { ok: false, message: "No hay conexión. Inténtalo de nuevo.", expired: false }
@@ -47,4 +47,15 @@ export async function adminPost<T>(name: string, body: Record<string, unknown> =
     }
   }
   return payload
+}
+
+export function adminPost<T>(name: string, body: Record<string, unknown> = {}): Promise<AdminResponse<T>> {
+  return adminRequest<T>(name, {
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+}
+
+export function adminUpload<T>(name: string, body: FormData): Promise<AdminResponse<T>> {
+  return adminRequest<T>(name, { body })
 }

@@ -1,12 +1,13 @@
 import { rpc, serveAdmin, uuid } from "../_shared/admin.ts"
-import { admin } from "../_shared/http.ts"
+import { HttpError } from "../_shared/http.ts"
+import { listTicketPhotoPaths, removeStorage } from "../_shared/photos.ts"
 
 serveAdmin(async (staff, body) => {
-  const result = await rpc("admin_delete_ticket", { p_actor: staff.id, p_ticket: uuid(body.ticketId) })
-  const path = typeof result.photoPath === "string" ? result.photoPath : ""
-  if (path) {
-    const removed = await admin().storage.from("montaigne-fix-fotos").remove([path])
-    if (removed.error) console.error("foto", removed.error.message)
+  const ticketId = uuid(body.ticketId)
+  const paths = await listTicketPhotoPaths(ticketId)
+  const gone = await removeStorage(paths)
+  if (!gone.ok) {
+    throw new HttpError(500, { ok: false, message: "No se han podido borrar las fotos. El parte no se ha eliminado." })
   }
-  return result
+  return rpc("admin_delete_ticket", { p_actor: staff.id, p_ticket: ticketId })
 })

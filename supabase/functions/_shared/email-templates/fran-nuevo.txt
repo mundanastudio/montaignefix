@@ -6,7 +6,7 @@ Solicitante:  {{nombre}} ({{email}})
 Lugar:        {{lugar}}
 Abierto el:   {{fecha_apertura}}
 <!--IF:observaciones-->Observaciones: {{observaciones}}
-<!--ENDIF:observaciones--><!--IF:foto-->Foto: adjunta a este correo.
+<!--ENDIF:observaciones--><!--IF:foto-->{{foto_txt}}
 <!--ENDIF:foto-->
 Hay {{pendientes_sin_asignar}} parte(s) sin asignar en total.
 Priorizar y asignar: {{url_ticket}}
