@@ -56,15 +56,30 @@ begin
     raise exception 'FALLO: el pendiente borrado sigue en la tabla';
   end if;
 
-  begin
-    perform montaigne_fix.admin_set_status(v_fran, v_a, 'cerrado', null);
-    raise exception 'FALLO: dejó cerrar una incidencia que no está resuelta';
-  exception when others then
-    if sqlerrm not like '%MF: Solo se cierra%' then
-      raise;
-    end if;
-  end;
+  perform montaigne_fix.admin_set_status(v_fran, v_a, 'cerrado', null);
+  select status into v_status from montaigne_fix.tickets where id = v_a;
+  if v_status <> 'cerrado' then
+    raise exception 'FALLO: Gestión no pudo cerrar sin pasar por resuelto (%)', v_status;
+  end if;
+  if not exists (
+    select 1 from montaigne_fix.tickets
+    where id = v_a and resolved_at is not null and closed_at is not null
+  ) then
+    raise exception 'FALLO: al cerrar directo no quedaron las fechas de resolución y cierre';
+  end if;
 
+  perform montaigne_fix.admin_set_status(v_fran, v_a, 'cerrado', null);
+
+  perform montaigne_fix.admin_set_status(v_fran, v_b, 'rechazado', null);
+  begin
+    perform montaigne_fix.admin_set_status(v_fran, v_b, 'cerrado', null);
+    raise exception 'FALLO: dejó cerrar una incidencia rechazada';
+  exception when others then
+    if sqlerrm not like '%Reabre la incidencia%' then raise; end if;
+  end;
+  perform montaigne_fix.admin_set_status(v_fran, v_b, 'reabrir', null);
+
+  perform montaigne_fix.admin_set_status(v_fran, v_a, 'reabrir', null);
   perform montaigne_fix.admin_set_status(v_fran, v_a, 'resuelto', null);
   perform montaigne_fix.admin_set_status(v_fran, v_a, 'cerrado', null);
   perform montaigne_fix.admin_set_status(v_fran, v_a, 'reabrir', null);

@@ -305,6 +305,11 @@ export function TicketDetail() {
                 {label}
               </Button>
             ))}
+          {!terminal && (
+            <Button variant="primary" disabled={busy} onClick={() => setDialog("cerrar")}>
+              Cerrar
+            </Button>
+          )}
           {ticket.status !== "rechazado" && (
             <Button variant="danger" disabled={busy} onClick={() => setDialog("rechazar")}>
               Rechazar
@@ -314,18 +319,11 @@ export function TicketDetail() {
             Borrar incidencia
           </Button>
         </div>
-        {(ticket.status === "resuelto" || terminal) && (
+        {terminal && (
           <div className={styles.actions}>
-            {ticket.status === "resuelto" && (
-              <Button variant="primary" disabled={busy} onClick={() => setDialog("cerrar")}>
-                Cerrar
-              </Button>
-            )}
-            {terminal && (
-              <Button variant="primary" disabled={busy} onClick={() => setDialog("reabrir")}>
-                Reabrir
-              </Button>
-            )}
+            <Button variant="primary" disabled={busy} onClick={() => setDialog("reabrir")}>
+              Reabrir
+            </Button>
           </div>
         )}
         {terminal && <p className={styles.hint}>Para seguir con ella, primero hay que reabrirla.</p>}
@@ -422,7 +420,7 @@ export function TicketDetail() {
         onCancel={() => setDialog(null)}
         onAccept={() => void run("admin-set-status", { status: "cerrado" }, "Incidencia cerrada.")}
       >
-        <p>Vas a cerrar {ticket.code}. Solo se cierra si está resuelta.</p>
+        <p>Vas a cerrar {ticket.code}. El solicitante recibirá el aviso de que está solucionado.</p>
       </Confirm>
       <Confirm
         open={dialog === "reabrir"}
