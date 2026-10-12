@@ -41,7 +41,7 @@ Al enviar → popup: **"Gracias, atenderemos tu solicitud lo antes posible. Reci
 El solicitante **no ve el estado** de su parte: solo recibe el email final.
 
 ### 3.2 Panel del gerente — `/gestion`
-- Listado de todas las incidencias con filtros (estado, prioridad, asignado, fechas) y búsqueda por texto.
+- Listado de todas las incidencias con filtros (estado, prioridad, asignado) y búsqueda por texto.
 - Ficha de cada incidencia con todos los datos, la foto y el historial completo.
 - Puede: asignar prioridad (P1/P2/P3), cambiar estado, asignar o reasignar a Fran/Agustín/Andrés, añadir **observaciones de gestión**, cerrar (Resuelto → Cerrado), reabrir, rechazar o marcar como duplicado.
 - Al asignar se guarda la fecha de asignación (vía historial, sección 5).

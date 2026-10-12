@@ -99,7 +99,14 @@ export function TeamList() {
       )}
       {!loading && tickets.length === 0 && (
         <Alert>
-          {tab === "mias" && "No tienes tareas asignadas."}
+          {tab === "mias" && (
+            <>
+              No tienes tareas asignadas. Puedes asignarte una pulsando{" "}
+              <Link className={styles.emptyLink} to="/equipo?vista=sin">
+                <strong>aquí</strong>
+              </Link>
+            </>
+          )}
           {tab === "sin" && "No hay incidencias sin asignar."}
           {tab === "todas" && "Todavía no hay incidencias."}
         </Alert>

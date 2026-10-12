@@ -61,8 +61,6 @@ export function TicketList() {
   const status = params.get("estado") ?? ""
   const priority = params.get("prioridad") ?? ""
   const assigned = params.get("asignado") ?? ""
-  const from = params.get("desde") ?? ""
-  const to = params.get("hasta") ?? ""
   const query = params.get("q") ?? ""
   const [draft, setDraft] = useState(query)
   const [counts, setCounts] = useState<Counts | null>(null)
@@ -93,8 +91,6 @@ export function TicketList() {
       status,
       priority,
       assigned,
-      from,
-      to,
       query,
     }).then((result) => {
       if (!active) return
@@ -111,7 +107,7 @@ export function TicketList() {
     return () => {
       active = false
     }
-  }, [call, status, priority, assigned, from, to, query])
+  }, [call, status, priority, assigned, query])
 
   function setFilter(key: string, value: string) {
     const next = new URLSearchParams(params)
@@ -125,7 +121,7 @@ export function TicketList() {
     setFilter("q", draft.trim())
   }
 
-  const filtered = Boolean(status || priority || assigned || from || to || query)
+  const filtered = Boolean(status || priority || assigned || query)
 
   return (
     <div className={styles.stack}>
@@ -192,14 +188,6 @@ export function TicketList() {
               </option>
             ))}
           </select>
-        </label>
-        <label className={`${styles.filter} ${styles.dateFilter}`}>
-          Desde
-          <input className={styles.control} type="date" value={from} onChange={(event) => setFilter("desde", event.target.value)} />
-        </label>
-        <label className={`${styles.filter} ${styles.dateFilter}`}>
-          Hasta
-          <input className={styles.control} type="date" value={to} onChange={(event) => setFilter("hasta", event.target.value)} />
         </label>
         <div className={styles.search}>
           <label className={styles.filter}>

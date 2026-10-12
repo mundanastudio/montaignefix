@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router-dom"
 import { Alert } from "../../components/ui/Alert"
 import { PriorityBadge, StatusBadge } from "../../components/ui/Badge"
@@ -93,12 +93,18 @@ export function TicketDetail() {
   const [remove, setRemove] = useState<Material | null>(null)
   const [edit, setEdit] = useState<Material | null>(null)
   const [editText, setEditText] = useState("")
+  const codeRef = useRef(code)
+  const loadSeq = useRef(0)
+  codeRef.current = code
 
   async function load() {
+    const seq = ++loadSeq.current
+    const requested = codeRef.current
     const result = await call<{ ticket: Ticket; technicians: Technician[]; notes: Note[]; events: HistoryEvent[]; materials: Material[] }>(
       "admin-ticket",
-      { code },
+      { code: requested },
     )
+    if (seq !== loadSeq.current || requested !== codeRef.current) return
     setLoading(false)
     if (!result.ok) {
       if (!result.expired) setError(result.message)
@@ -116,22 +122,43 @@ export function TicketDetail() {
 
   useEffect(() => {
     setLoading(true)
+    setTicket(null)
+    setAssignee("")
+    setNote("")
+    setMaterialsText("")
+    setDuplicateCode("")
+    setError(null)
+    setNotice(null)
+    setDialog(null)
+    setRemove(null)
+    setEdit(null)
+    setEditText("")
+    setBusy(false)
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [call, code])
 
+  function viewedTicket(): Ticket | null {
+    if (!ticket || ticket.code !== code) return null
+    return ticket
+  }
+
   async function run(name: string, body: Record<string, unknown>, okMessage: string) {
-    if (!ticket) return false
+    const viewed = viewedTicket()
+    if (!viewed) return false
+    const ticketId = viewed.id
     setBusy(true)
     setError(null)
     setNotice(null)
-    const result = await call(name, { ticketId: ticket.id, ...body })
+    const result = await call(name, { ticketId, ...body })
+    if (viewed.code !== codeRef.current) return false
     if (!result.ok) {
       setBusy(false)
       if (!result.expired) setError(result.message)
       return false
     }
     await load()
+    if (viewed.code !== codeRef.current) return false
     setBusy(false)
     setNotice(okMessage)
     setDialog(null)
@@ -140,10 +167,11 @@ export function TicketDetail() {
   }
 
   async function removeTicket() {
-    if (!ticket) return
+    const viewed = viewedTicket()
+    if (!viewed) return
     setBusy(true)
     setError(null)
-    const result = await call("admin-delete-ticket", { ticketId: ticket.id })
+    const result = await call("admin-delete-ticket", { ticketId: viewed.id })
     setBusy(false)
     if (!result.ok) {
       if (!result.expired) setError(result.message)
@@ -164,7 +192,7 @@ export function TicketDetail() {
     if (saved) setMaterialsText("")
   }
 
-  if (loading) {
+  if (loading || (ticket !== null && ticket.code !== code)) {
     return (
       <p className={styles.muted}>
         <Spinner label="Cargando la incidencia" /> Cargando la incidencia…
@@ -308,7 +336,7 @@ export function TicketDetail() {
         <div className={styles.rowActions}>
           <label className={styles.filter}>
             Técnico
-            <select className={styles.control} value={assignee} onChange={(event) => setAssignee(event.target.value)}>
+            <select className={styles.control} value={assignee} disabled={busy} onChange={(event) => setAssignee(event.target.value)}>
               <option value="">Sin asignar</option>
               {technicians.map((person) => (
                 <option key={person.id} value={person.id}>

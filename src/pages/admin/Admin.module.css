@@ -156,10 +156,6 @@
   color: var(--color-heading);
 }
 
-.dateFilter {
-  display: none;
-}
-
 .control {
   width: 100%;
   min-height: var(--touch-target);
