@@ -151,7 +151,7 @@ Solo se envían estos emails:
 | Un técnico marca **Resuelto** | Fran | Aviso para que lo revise y lo cierre |
 | Fran marca **Cerrado** | Solicitante | "Tu solicitud MF-XXXX (reparación, lugar) ya está solucionada. Gracias." También a cada solicitante distinto de los avisos unidos, con el código, la reparación y el lugar **de su** parte. Los unidos siguen en estado duplicado. |
 | Fran marca **Rechazado** | Solicitante | Explica el motivo (el texto que escribió Gestión). Asunto: `Sobre tu solicitud MF-XXXX: …`. No se avisa a los avisos unidos. |
-| Fran marca **Duplicado** | Solicitante del aviso unido | Asunto: `Tu aviso MF-XXXX ya estaba registrado`. Variables: nombre de pila, código, código original, reparación, lugar, fecha de apertura. Si el email es el mismo que el del original, no se envía. Un fallo de SMTP no deshace el marcado; queda en el log y Gestión ve aviso. Quitar duplicado no retira un correo ya enviado. |
+| Fran marca **Duplicado** | Solicitante del aviso unido | Asunto: `Tu aviso MF-XXXX ya estaba registrado`. Variables: nombre de pila, código, código original, reparación, lugar, fecha de apertura. Se envía también si el email es el mismo que el del original. Un fallo de SMTP no deshace el marcado; queda en el log y Gestión ve aviso. Quitar duplicado no retira un correo ya enviado. |
 | Miércoles 8:00 | Fran | Informe semanal |
 | Anual (ver 8) | Fran y Curro | Informe anual |
 

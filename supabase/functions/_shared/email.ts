@@ -28,7 +28,7 @@ import {
   subjectRechazado,
   subjectSolucionado,
 } from "./email-render.mjs"
-import { sameRequesterEmail, uniqueClosedRecipients } from "./duplicateMail.ts"
+import { uniqueClosedRecipients } from "./duplicateMail.ts"
 import { db } from "./http.ts"
 
 type Kind = "nuevo" | "recibido" | "resuelto" | "cerrado" | "rechazado" | "duplicado" | "prueba" | "informe" | "aviso"
@@ -662,9 +662,6 @@ export async function notifyDuplicated(ticketId: string): Promise<{ ok: boolean;
   if (!original) {
     await record({ ticketId, kind: "duplicado", recipient: ticket.requester_email, subject, ok: false, error: "No se ha podido leer el parte original." })
     return { ok: false, error: "No se ha podido leer el parte original." }
-  }
-  if (sameRequesterEmail(ticket.requester_email, original.requester_email)) {
-    return { ok: true, error: null }
   }
   const links = urls()
   if (!links) {

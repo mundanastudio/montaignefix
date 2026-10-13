@@ -9,7 +9,7 @@ Fuente de diseño: esta carpeta. Copia idéntica para las Edge Functions: `supab
 | `fran-resuelto` | Un técnico marca Resuelto | Fran |
 | `cerrado` | Gestión cierra | Solicitante (y cada email distinto de los avisos unidos, con los datos de su parte) |
 | `rechazado` | Gestión rechaza (con motivo) | Solicitante |
-| `duplicado` | Gestión une el aviso a un parte abierto | Solicitante del aviso unido. Si el email es el mismo que el del original, no se envía. |
+| `duplicado` | Gestión une el aviso a un parte abierto | Solicitante del aviso unido (también si el email es el mismo que el del original). |
 
 **Duplicado.** Asunto: `Tu aviso {{codigo}} ya estaba registrado`. `{{nombre}}` es solo el nombre de pila. `{{codigo_original}}` es el parte abierto al que se une. No edites el HTML ni el texto.
 
