@@ -7,8 +7,8 @@ Fuente de diseño: esta carpeta. Copia idéntica para las Edge Functions: `supab
 | `recibido` | Se abre un parte | Solicitante |
 | `fran-nuevo` | Se abre un parte | Fran |
 | `fran-resuelto` | Un técnico marca Resuelto | Fran |
-| `cerrado` | Gestión cierra | Solicitante (y cada email distinto de los avisos unidos, con los datos de su parte) |
-| `rechazado` | Gestión rechaza (con motivo) | Solicitante |
+| `cerrado` | Gestión cierra | Solicitante (y cada email distinto de los avisos unidos, con los datos de su parte). Los unidos también quedan cerrados. |
+| `rechazado` | Gestión rechaza (con motivo) | Solicitante y quienes abrieron los avisos unidos (cada uno con los datos de su parte) |
 | `duplicado` | Gestión une el aviso a un parte abierto | Solicitante del aviso unido (también si el email es el mismo que el del original). |
 
 **Duplicado.** Asunto: `Tu aviso {{codigo}} ya estaba registrado`. `{{nombre}}` es solo el nombre de pila. `{{codigo_original}}` es el parte abierto al que se une. No edites el HTML ni el texto.

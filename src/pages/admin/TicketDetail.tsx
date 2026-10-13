@@ -508,7 +508,12 @@ export function TicketDetail() {
         onCancel={() => setDialog(null)}
         onAccept={() => void run("admin-set-status", { status: "cerrado" }, "Incidencia cerrada.")}
       >
-        <p>Vas a cerrar {ticket.code}. El solicitante recibirá el aviso de que está solucionado.</p>
+        <p>
+          Vas a cerrar {ticket.code}. El solicitante recibirá el aviso de que está solucionado.
+          {linkedDuplicates.length > 0
+            ? " Los avisos unidos también quedan cerrados."
+            : ""}
+        </p>
       </Confirm>
       <Confirm
         open={dialog === "reabrir"}
@@ -532,7 +537,12 @@ export function TicketDetail() {
           void run("admin-set-status", { status: "rechazado", reason: trimmedReason(rejectReason) }, "Incidencia rechazada.")
         }
       >
-        <p>Vas a rechazar {ticket.code}. Dejará de estar en el trabajo del equipo. La persona que abrió el parte recibirá este motivo por email.</p>
+        <p>
+          Vas a rechazar {ticket.code}. Dejará de estar en el trabajo del equipo. La persona que abrió el parte recibirá este motivo por email.
+          {linkedDuplicates.length > 0
+            ? " También lo recibirán quienes abrieron los avisos unidos."
+            : ""}
+        </p>
         <div className={styles.chips}>
           {REJECT_PRESETS.map((preset) => (
             <Button key={preset} type="button" variant="secondary" disabled={busy} onClick={() => setRejectReason(preset)}>

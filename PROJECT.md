@@ -45,7 +45,7 @@ El solicitante **no ve el estado** de su parte: solo recibe el email final.
 - Ficha de cada incidencia con todos los datos, la galería de fotos (miniaturas, visor a pantalla, deslizar / flechas) y el historial completo.
 - Puede añadir fotos (hasta 10 por parte, también si está cerrado) y borrar cualquiera, incluidas las del solicitante y las de un técnico.
 - Puede: asignar prioridad (P1/P2/P3), cambiar estado, asignar o reasignar a Fran/Agustín/Andrés, añadir **observaciones de gestión**, cerrar (desde cualquier estado abierto, sin pasar por Resuelto), reabrir, rechazar (con motivo obligatorio de 10–500 caracteres, que recibe el solicitante por email) o marcar como duplicado.
-- **Duplicado**: hay que elegir un parte **abierto** (buscador: código, reparación, lugar). No se une a sí mismo ni a uno cerrado, rechazado o ya duplicado. En la ficha unida: «Unido al parte MF-XXXX». En la original: «Avisos unidos».
+- **Duplicado**: hay que elegir un parte **abierto** (buscador: código, reparación, lugar). No se une a sí mismo ni a uno cerrado, rechazado o ya duplicado. En la ficha unida: «Unido al parte MF-XXXX». En la original: «Avisos unidos». Al **cerrar** el original, los avisos unidos también pasan a Cerrado. Al **rechazar** el original, el motivo llega también a quienes abrieron los avisos unidos.
 - **Quitar duplicado** (no Reabrir): vuelve al estado que tenía, con el mismo técnico y prioridad. Se borra la relación; el historial se queda. Si ya salió el email, no se retira. Reabrir un duplicado no vale.
 - Al asignar se guarda la fecha de asignación (vía historial, sección 5).
 - Sección **"Lista de la compra"** (ver 3.4), con un contador de artículos pendientes visible en la navegación del panel.
@@ -149,8 +149,8 @@ Solo se envían estos emails:
 | Se abre un parte | Solicitante | Acuse de recibo: "ya estamos en ello", con el código MF-XXXX |
 | Se abre un parte | Fran | Todos los datos + las fotos (hasta 3: incrustadas `cid:foto-1`… y adjuntas). Añadir fotos después no envía correo. |
 | Un técnico marca **Resuelto** | Fran | Aviso para que lo revise y lo cierre |
-| Fran marca **Cerrado** | Solicitante | "Tu solicitud MF-XXXX (reparación, lugar) ya está solucionada. Gracias." También a cada solicitante distinto de los avisos unidos, con el código, la reparación y el lugar **de su** parte. Los unidos siguen en estado duplicado. |
-| Fran marca **Rechazado** | Solicitante | Explica el motivo (el texto que escribió Gestión). Asunto: `Sobre tu solicitud MF-XXXX: …`. No se avisa a los avisos unidos. |
+| Fran marca **Cerrado** | Solicitante | "Tu solicitud MF-XXXX (reparación, lugar) ya está solucionada. Gracias." Los avisos unidos también quedan **cerrados**. También se avisa a cada solicitante distinto de los avisos unidos, con el código, la reparación y el lugar **de su** parte. |
+| Fran marca **Rechazado** | Solicitante | Explica el motivo (el texto que escribió Gestión). Asunto: `Sobre tu solicitud MF-XXXX: …`. El mismo motivo llega a quienes abrieron los avisos unidos, con los datos de su parte. Los unidos siguen en estado duplicado. |
 | Fran marca **Duplicado** | Solicitante del aviso unido | Asunto: `Tu aviso MF-XXXX ya estaba registrado`. Variables: nombre de pila, código, código original, reparación, lugar, fecha de apertura. Se envía también si el email es el mismo que el del original. Un fallo de SMTP no deshace el marcado; queda en el log y Gestión ve aviso. Quitar duplicado no retira un correo ya enviado. |
 | Miércoles 8:00 | Fran | Informe semanal |
 | Anual (ver 8) | Fran y Curro | Informe anual |

@@ -183,5 +183,16 @@ begin
     if sqlerrm not like '%no está marcada como duplicado%' then raise; end if;
   end;
 
+  perform montaigne_fix.admin_set_status(v_fran, v_b, 'duplicado', 'MF-DUP-A');
+  perform montaigne_fix.admin_set_status(v_fran, v_a, 'cerrado', null);
+  select status, duplicate_of into v_status, v_dup from montaigne_fix.tickets where id = v_b;
+  if v_status <> 'cerrado' or v_dup is not null then
+    raise exception 'FALLO: al cerrar el original el unido debía quedar cerrado y sin relación (%)', v_status;
+  end if;
+  select status into v_status from montaigne_fix.tickets where id = v_a;
+  if v_status <> 'cerrado' then
+    raise exception 'FALLO: el original no quedó cerrado (%)', v_status;
+  end if;
+
   raise exception 'DUPLICADO_OK';
 end $$;

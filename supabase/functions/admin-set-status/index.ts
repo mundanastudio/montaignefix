@@ -1,5 +1,5 @@
 import { rpc, serveAdmin, uuid } from "../_shared/admin.ts"
-import { notifyClosed, notifyDuplicated, notifyRejected, notifyResolved } from "../_shared/email.ts"
+import { listLinkedDuplicates, notifyClosed, notifyDuplicated, notifyRejected, notifyResolved } from "../_shared/email.ts"
 import { HttpError, text } from "../_shared/http.ts"
 
 const ALLOWED = new Set(["en_curso", "en_espera", "resuelto", "cerrado", "rechazado", "duplicado", "quitar_duplicado", "reabrir"])
@@ -9,6 +9,7 @@ serveAdmin(async (staff, body) => {
   if (!ALLOWED.has(status)) throw new HttpError(400, { ok: false, message: "Ese cambio de estado no está permitido." })
   const ticketId = uuid(body.ticketId)
   const reason = text(body.reason).trim()
+  const linked = status === "cerrado" ? await listLinkedDuplicates(ticketId) : []
   const result = await rpc("admin_set_status", {
     p_actor: staff.id,
     p_ticket: ticketId,
@@ -18,7 +19,7 @@ serveAdmin(async (staff, body) => {
   })
   if (status === "resuelto") await notifyResolved(ticketId, staff.id, staff.name)
   if (status === "cerrado") {
-    const mail = await notifyClosed(ticketId)
+    const mail = await notifyClosed(ticketId, linked)
     return { ...result, emailError: mail.error }
   }
   if (status === "duplicado") {

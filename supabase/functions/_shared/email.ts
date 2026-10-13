@@ -560,22 +560,16 @@ export async function notifyResolved(ticketId: string, technicianId: string, tec
   })
 }
 
-export async function notifyRejected(ticketId: string, reason: string): Promise<{ ok: boolean; error: string | null }> {
-  const ticket = await loadTicket(ticketId)
-  const motivo = reason.trim()
-  if (!ticket) {
-    await record({ ticketId, kind: "rechazado", recipient: "", subject: "Sobre tu solicitud", ok: false, error: "No se ha podido leer el parte para avisar al solicitante." })
-    return { ok: false, error: "No se ha podido leer el parte para avisar al solicitante." }
-  }
+async function sendRejectedMail(ticket: TicketMail, motivo: string): Promise<{ ok: boolean; error: string | null }> {
   const links = urls()
   const subject = subjectRechazado(ticket.code, ticket.description)
   if (!links) {
-    await record({ ticketId, kind: "rechazado", recipient: ticket.requester_email, subject, ok: false, error: "Falta APP_PUBLIC_URL." })
+    await record({ ticketId: ticket.id, kind: "rechazado", recipient: ticket.requester_email, subject, ok: false, error: "Falta APP_PUBLIC_URL." })
     return { ok: false, error: "Falta APP_PUBLIC_URL." }
   }
   return rendered({
     kind: "rechazado",
-    ticketId,
+    ticketId: ticket.id,
     to: ticket.requester_email,
     subject,
     htmlTemplate: rechazadoHtml,
@@ -591,6 +585,32 @@ export async function notifyRejected(ticketId: string, reason: string): Promise<
       url_assets: links.assets,
     },
   })
+}
+
+export async function listLinkedDuplicates(originalId: string): Promise<TicketMail[]> {
+  const { data } = await db()
+    .from("tickets")
+    .select("id, code, requester_name, requester_email, description, location, requester_notes, created_at, resolved_at, closed_at, priority, duplicate_of")
+    .eq("duplicate_of", originalId)
+    .order("code", { ascending: true })
+  return (data ?? []) as TicketMail[]
+}
+
+export async function notifyRejected(ticketId: string, reason: string): Promise<{ ok: boolean; error: string | null }> {
+  const ticket = await loadTicket(ticketId)
+  const motivo = reason.trim()
+  if (!ticket) {
+    await record({ ticketId, kind: "rechazado", recipient: "", subject: "Sobre tu solicitud", ok: false, error: "No se ha podido leer el parte para avisar al solicitante." })
+    return { ok: false, error: "No se ha podido leer el parte para avisar al solicitante." }
+  }
+  const primary = await sendRejectedMail(ticket, motivo)
+  const extras = await listLinkedDuplicates(ticketId)
+  let error = primary.error
+  for (const row of extras) {
+    const mail = await sendRejectedMail(row, motivo)
+    if (!mail.ok) error = error ?? mail.error
+  }
+  return { ok: error === null, error }
 }
 
 async function sendClosedMail(ticket: TicketMail): Promise<{ ok: boolean; error: string | null }> {
@@ -620,23 +640,19 @@ async function sendClosedMail(ticket: TicketMail): Promise<{ ok: boolean; error:
   })
 }
 
-export async function notifyClosed(ticketId: string): Promise<{ ok: boolean; error: string | null }> {
+export async function notifyClosed(ticketId: string, linked: TicketMail[] = []): Promise<{ ok: boolean; error: string | null }> {
   const ticket = await loadTicket(ticketId)
   if (!ticket) {
     await record({ ticketId, kind: "cerrado", recipient: "", subject: "Parte cerrado", ok: false, error: "No se ha podido leer el parte para avisar al solicitante." })
     return { ok: false, error: "No se ha podido leer el parte para avisar al solicitante." }
   }
   const primary = await sendClosedMail(ticket)
-  const { data } = await db()
-    .from("tickets")
-    .select("id, code, requester_name, requester_email, description, location, created_at, closed_at")
-    .eq("duplicate_of", ticketId)
-    .order("code", { ascending: true })
-  const extras = uniqueClosedRecipients(ticket.requester_email, (data ?? []) as Array<TicketMail & { requester_email: string }>)
+  const extras = uniqueClosedRecipients(ticket.requester_email, linked)
   let error = primary.error
   for (const row of extras) {
+    const fresh = await loadTicket(row.id)
     const mail = await sendClosedMail({
-      ...ticket,
+      ...(fresh ?? ticket),
       id: String(row.id),
       code: String(row.code),
       requester_name: String(row.requester_name),
@@ -644,7 +660,7 @@ export async function notifyClosed(ticketId: string): Promise<{ ok: boolean; err
       description: String(row.description),
       location: String(row.location),
       created_at: String(row.created_at),
-      closed_at: ticket.closed_at,
+      closed_at: fresh?.closed_at ?? ticket.closed_at,
     })
     if (!mail.ok) error = error ?? mail.error
   }
