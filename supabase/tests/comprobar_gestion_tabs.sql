@@ -25,7 +25,8 @@ begin
     ('MF-GTB-7', 'Sara', 'sara@ejemplo.com', 'Resuelta vieja', 'Aula 7'),
     ('MF-GTB-8', 'Toni', 'toni@ejemplo.com', 'Resuelta nueva', 'Aula 8'),
     ('MF-GTB-9', 'Uma', 'uma@ejemplo.com', 'Cerrada vieja', 'Aula 9'),
-    ('MF-GTB-A', 'Vera', 'vera@ejemplo.com', 'Cerrada nueva', 'Aula 10');
+    ('MF-GTB-A', 'Vera', 'vera@ejemplo.com', 'Cerrada nueva', 'Aula 10'),
+    ('MF-GTB-B', 'Wala', 'wala@ejemplo.com', 'Rechazada', 'Aula 11');
 
   perform montaigne_fix.admin_set_priority(v_fran, (select id from montaigne_fix.tickets where code = 'MF-GTB-5'), 'p1');
   perform montaigne_fix.admin_set_priority(v_fran, (select id from montaigne_fix.tickets where code = 'MF-GTB-4'), 'p2');
@@ -36,6 +37,10 @@ begin
   perform montaigne_fix.admin_set_status(v_fran, (select id from montaigne_fix.tickets where code = 'MF-GTB-9'), 'cerrado', null);
   perform montaigne_fix.admin_set_status(v_fran, (select id from montaigne_fix.tickets where code = 'MF-GTB-A'), 'cerrado', null);
   perform montaigne_fix.admin_set_status(v_fran, (select id from montaigne_fix.tickets where code = 'MF-GTB-6'), 'duplicado', 'MF-GTB-5');
+  perform montaigne_fix.admin_set_status(
+    v_fran, (select id from montaigne_fix.tickets where code = 'MF-GTB-B'), 'rechazado', null,
+    'Lo hemos revisado y ya está solucionado o funciona correctamente.'
+  );
 
   v_json := montaigne_fix.admin_list_tickets(v_fran, null, null, null, null, null, 'MF-GTB', 'abiertas');
   select coalesce(array_agg(x->>'code' order by ord), '{}')
@@ -45,8 +50,8 @@ begin
   if v_codes <> array['MF-GTB-5', 'MF-GTB-4', 'MF-GTB-3', 'MF-GTB-1', 'MF-GTB-2']::text[] then
     raise exception 'FALLO: orden de abiertas %', v_codes;
   end if;
-  if v_json->'tickets' @> '[{"code":"MF-GTB-6"}]' then
-    raise exception 'FALLO: el duplicado no debía salir en abiertas';
+  if v_json->'tickets' @> '[{"code":"MF-GTB-6"}]' or v_json->'tickets' @> '[{"code":"MF-GTB-B"}]' then
+    raise exception 'FALLO: el duplicado o el rechazado no debían salir en abiertas';
   end if;
   if (v_json->'counts'->>'abiertas') is null or (v_json->'counts'->>'cerradas') is null then
     raise exception 'FALLO: faltan contadores de pestaña %', v_json->'counts';
@@ -64,8 +69,8 @@ begin
   select coalesce(array_agg(x->>'code' order by ord), '{}')
     into v_codes
   from jsonb_array_elements(v_json->'tickets') with ordinality as t(x, ord);
-  if v_codes <> array['MF-GTB-A', 'MF-GTB-9']::text[] then
-    raise exception 'FALLO: cerradas debían ir de más reciente a más antigua, %', v_codes;
+  if v_codes <> array['MF-GTB-B', 'MF-GTB-A', 'MF-GTB-9']::text[] then
+    raise exception 'FALLO: cerradas debían incluir rechazadas, de más reciente a más antigua, %', v_codes;
   end if;
   if v_json->'tickets' @> '[{"code":"MF-GTB-6"}]' then
     raise exception 'FALLO: el duplicado no debía salir en cerradas todavía';
