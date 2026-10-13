@@ -19,6 +19,7 @@ interface Counts {
 interface Technician {
   id: string
   name: string
+  combo?: boolean
 }
 
 interface EmailRow {
@@ -196,11 +197,20 @@ export function TicketList() {
           <select className={styles.control} value={assigned} onChange={(event) => setFilter("asignado", event.target.value)}>
             <option value="">Todos</option>
             <option value="ninguno">Sin asignar</option>
-            {technicians.map((person) => (
-              <option key={person.id} value={person.id}>
-                {person.name}
-              </option>
-            ))}
+            <optgroup label="Persona">
+              {technicians.filter((person) => !person.combo).map((person) => (
+                <option key={person.id} value={person.id}>
+                  {person.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Equipo">
+              {technicians.filter((person) => person.combo).map((person) => (
+                <option key={person.id} value={person.id}>
+                  {person.name}
+                </option>
+              ))}
+            </optgroup>
           </select>
         </label>
         {filtered && (

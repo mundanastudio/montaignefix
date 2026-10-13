@@ -193,6 +193,7 @@ export function TeamTicket() {
   const terminal = TERMINAL.has(ticket.status)
   const internas = notes.filter((item) => item.kind === "interna")
   const gestion = notes.filter((item) => item.kind === "gestion")
+  const onlyMine = ticket.assigneeId === actorId
   const others = technicians.filter((item) => item.id !== actorId)
   const colleagueName = others.find((item) => item.id === colleague)?.name
 
@@ -334,7 +335,7 @@ export function TeamTicket() {
         </section>
       )}
 
-      {ticket.mine && (
+      {onlyMine && (
         <section className={styles.block}>
           <h3>Asignación</h3>
           <div className={styles.actions}>

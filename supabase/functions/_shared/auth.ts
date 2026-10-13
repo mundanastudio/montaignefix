@@ -17,6 +17,7 @@ export interface Staff {
   name: string
   is_manager: boolean
   is_technician: boolean
+  is_combo?: boolean
 }
 
 type Credential = "pin" | "fran" | "curro"
@@ -335,7 +336,7 @@ export async function loadStaff(slug: string): Promise<Staff | null> {
   if (!/^[a-z][a-z0-9_-]{1,30}$/.test(slug)) return null
   const { data, error } = await db()
     .from("staff")
-    .select("id, slug, name, is_manager, is_technician")
+    .select("id, slug, name, is_manager, is_technician, is_combo")
     .eq("slug", slug)
     .eq("active", true)
     .maybeSingle()
@@ -347,7 +348,12 @@ export async function loadStaff(slug: string): Promise<Staff | null> {
 }
 
 export async function technicians(): Promise<{ slug: string; name: string }[]> {
-  const { data, error } = await db().from("staff").select("slug, name").eq("active", true).eq("is_technician", true)
+  const { data, error } = await db()
+    .from("staff")
+    .select("slug, name")
+    .eq("active", true)
+    .eq("is_technician", true)
+    .eq("is_combo", false)
   if (error) throw new HttpError(500, { ok: false, message: "No se ha podido preparar el acceso. Inténtalo de nuevo." })
   return ((data ?? []) as { slug: string; name: string }[]).sort(
     (a, b) => ORDER.indexOf(a.slug) - ORDER.indexOf(b.slug),

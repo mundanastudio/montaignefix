@@ -17,6 +17,7 @@ import styles from "./Admin.module.css"
 interface Technician {
   id: string
   name: string
+  combo?: boolean
 }
 
 interface Note {
@@ -452,11 +453,20 @@ export function TicketDetail() {
             Técnico
             <select className={styles.control} value={assignee} disabled={busy} onChange={(event) => setAssignee(event.target.value)}>
               <option value="">Sin asignar</option>
-              {technicians.map((person) => (
-                <option key={person.id} value={person.id}>
-                  {person.name}
-                </option>
-              ))}
+              <optgroup label="Persona">
+                {technicians.filter((person) => !person.combo).map((person) => (
+                  <option key={person.id} value={person.id}>
+                    {person.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Equipo">
+                {technicians.filter((person) => person.combo).map((person) => (
+                  <option key={person.id} value={person.id}>
+                    {person.name}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </label>
           <Button

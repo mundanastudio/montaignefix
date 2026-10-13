@@ -6,7 +6,7 @@ Deno.serve((req) =>
     await requireToken(req, ["gate", "team"])
     const slug = text((await readJson(req)).slug)
     const staff = await loadStaff(slug)
-    if (!staff?.is_technician) return json(400, { ok: false, message: "Esa persona no está en el equipo." })
+    if (!staff?.is_technician || staff.is_combo) return json(400, { ok: false, message: "Esa persona no está en el equipo." })
     return json(200, {
       ok: true,
       token: await signToken("team", staff.slug),
