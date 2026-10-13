@@ -113,3 +113,7 @@ verify_jwt = false
 
 [functions.staff-delete-photo]
 verify_jwt = false
+
+# Ping del GitHub Action. La puerta es x-keepalive-token, no el JWT de Supabase.
+[functions.keepalive]
+verify_jwt = false

@@ -84,14 +84,20 @@ Para dar de baja a alguien sin borrar su historial: `update montaigne_fix.staff 
 
 El plan gratuito pausa el proyecto tras unos 7 días sin actividad. Mientras está pausado no entra el formulario, no entran los paneles, no salen correos y no corren los informes.
 
-El workflow `.github/workflows/keep-supabase-alive.yml` se ejecuta cada dos días y, si el proyecto está pausado, pide reactivarlo. En GitHub → Settings → Secrets and variables → Actions tienen que existir:
+El workflow `.github/workflows/keep-supabase-alive.yml` corre **todos los días a las 06:00 UTC** (y se puede lanzar a mano). Hace tres cosas:
 
-- `SUPABASE_ACCESS_TOKEN` (token personal de Supabase, el que empieza por `sbp_`)
+1. Si existe `SUPABASE_ACCESS_TOKEN`, pide a Supabase que reanude el proyecto y espera hasta 5 minutos.
+2. Llama a la Edge Function `keepalive` con el secreto `KEEPALIVE_TOKEN`. Esa función hace una consulta mínima a la base (contar partes) y responde `{"ok": true}`. No crea partes, no manda correos y no cuenta para los topes del formulario. Si no responde 200, el job falla y GitHub avisa por email.
+3. Comprueba que `https://montaignefix.pages.dev/`, `https://montaignefix.vercel.app` y `https://montaignefix.vercel.app/equipo` responden 200.
+
+Secretos de GitHub (Settings → Secrets and variables → Actions):
+
+- `SUPABASE_ACCESS_TOKEN` — token personal de tu cuenta de Supabase (empieza por `sbp_`). Es el que puede reactivar un proyecto pausado. Cómo crearlo: [supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens) → **Generate new token** → copia el valor (solo se ve una vez) → en el repo, `gh secret set SUPABASE_ACCESS_TOKEN` y pégalo. Si un día el restore falla con 401, el token caducó o se borró: genera otro y vuelve a guardar ese secreto.
 - `SUPABASE_PROJECT_REF` = `rnghppmuqbdpbkkljnsr`
-- `SUPABASE_URL` = `https://rnghppmuqbdpbkkljnsr.supabase.co`
-- `SUPABASE_ANON_KEY` (la clave pública, la misma del frontend)
+- `SUPABASE_KEEPALIVE_URL` = `https://rnghppmuqbdpbkkljnsr.supabase.co/functions/v1/keepalive`
+- `KEEPALIVE_TOKEN` — el mismo valor que el secreto `KEEPALIVE_TOKEN` de las Edge Functions de Supabase. No va en el código.
 
-Si aun así se pausa: entra en [el proyecto](https://supabase.com/dashboard/project/rnghppmuqbdpbkkljnsr) y pulsa Restore. Cuando vuelva, los datos siguen donde estaban. El informe pendiente se intenta en la siguiente hora en punto, a partir de las 08:00 de Madrid, si ese día tocaba.
+Si el Action falla un día: mira [Actions → Keep Supabase alive](https://github.com/mundanastudio/montaignefix/actions/workflows/keep-supabase-alive.yml). Entra en [el proyecto](https://supabase.com/dashboard/project/rnghppmuqbdpbkkljnsr) y pulsa **Restore** si está pausado. Cuando vuelva, los datos siguen donde estaban. El informe pendiente se intenta en la siguiente hora en punto, a partir de las 08:00 de Madrid, si ese día tocaba. Luego lanza el workflow a mano para comprobar.
 
 ## Cloudflare Pages
 
