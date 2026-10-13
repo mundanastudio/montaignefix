@@ -7,6 +7,7 @@ import {
   EMAIL_DOMAIN_MESSAGE,
   EMAIL_LIMIT_MESSAGE,
   isAllowedRequesterEmail,
+  isUnlimitedRequesterEmail,
   normalizeEmail,
   requesterEmailFieldError,
 } from "../supabase/functions/_shared/allowedEmails.ts"
@@ -31,6 +32,8 @@ describe("isAllowedRequesterEmail", () => {
     "  CurroMena89@Gmail.com ",
     "andrescanorodriguez@gmail.com",
     "  AndresCanoRodriguez@Gmail.com ",
+    "agumasero@gmail.com",
+    "  AguMasero@Gmail.com ",
   ]
   for (const email of allowed) {
     it(`acepta ${JSON.stringify(email)}`, () => {
@@ -56,6 +59,16 @@ describe("isAllowedRequesterEmail", () => {
   }
 })
 
+describe("isUnlimitedRequesterEmail", () => {
+  it("solo esos dos Gmail saltan el tope; Curro no va en esta lista", () => {
+    assert.equal(isUnlimitedRequesterEmail("andrescanorodriguez@gmail.com"), true)
+    assert.equal(isUnlimitedRequesterEmail("  AguMasero@Gmail.com "), true)
+    assert.equal(isUnlimitedRequesterEmail("curromena89@gmail.com"), false)
+    assert.equal(isUnlimitedRequesterEmail("otro@gmail.com"), false)
+    assert.equal(isUnlimitedRequesterEmail("profe@grupomontaigne.com"), false)
+  })
+})
+
 describe("mensajes", () => {
   it("el dominio inválido usa el texto del formulario", () => {
     assert.equal(requesterEmailFieldError("otro@gmail.com"), EMAIL_DOMAIN_MESSAGE)
@@ -66,6 +79,7 @@ describe("mensajes", () => {
     const src = readFileSync(join(root, "supabase/functions/create-ticket/index.ts"), "utf8")
     assert.match(src, /EMAIL_LIMIT_MESSAGE/)
     assert.match(src, /requesterEmailFieldError/)
+    assert.match(src, /isUnlimitedRequesterEmail/)
     assert.equal(EMAIL_LIMIT_MESSAGE, "Debes esperar 24h para poder abrir un parte nuevo")
     assert.doesNotMatch(src, /Con este email ya hay/)
     assert.doesNotMatch(src, /Podrás abrir otro el/)

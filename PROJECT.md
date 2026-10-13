@@ -27,7 +27,7 @@ Herramienta web para abrir y gestionar **partes de reparación física** en el C
 ### 3.1 Formulario público — `/`
 Campos:
 - Nombre (obligatorio)
-- Email corporativo (obligatorio). Dominios exactos: `grupomontaigne.com`, `grupomontaignesevilla.com`, `colegiomontaignesevilla.com` y `mundana.us` (sin distinguir mayúsculas; se recortan espacios). Excepciones: `curromena89@gmail.com` y `andrescanorodriguez@gmail.com`. Si no vale: «Debes utilizar un correo corporativo del Grupo Montaigne». Se guarda y se cuenta el tope de 3 partes / 24 h con el email ya normalizado. Al llegar al tope: «Debes esperar 24h para poder abrir un parte nuevo».
+- Email corporativo (obligatorio). Dominios exactos: `grupomontaigne.com`, `grupomontaignesevilla.com`, `colegiomontaignesevilla.com` y `mundana.us` (sin distinguir mayúsculas; se recortan espacios). Excepciones de Gmail (solo estas, no cualquier Gmail): `curromena89@gmail.com`, `andrescanorodriguez@gmail.com` y `agumasero@gmail.com`. Si no vale: «Debes utilizar un correo corporativo del Grupo Montaigne». Se guarda y se cuenta el tope de 3 partes / 24 h con el email ya normalizado, salvo `andrescanorodriguez@gmail.com` y `agumasero@gmail.com`, que no tienen tope. Al llegar al tope: «Debes esperar 24h para poder abrir un parte nuevo».
 - Reparación necesaria (obligatorio, texto)
 - Lugar (obligatorio, **texto libre**: aula, planta, patio, auditorio, baños…)
 - Fotos (opcional, hasta 3). Dos botones: **Hacer foto** (cámara trasera) y **Elegir de la galería** (varias a la vez). Miniaturas con **Quitar**. Si elige más de las que caben, aviso y se quedan las primeras.

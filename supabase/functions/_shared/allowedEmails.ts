@@ -9,6 +9,13 @@ export const ALLOWED_EMAIL_DOMAINS = [
 export const ALLOWED_EMAIL_EXCEPTIONS = [
   "curromena89@gmail.com",
   "andrescanorodriguez@gmail.com",
+  "agumasero@gmail.com",
+] as const
+
+/** Gmail concretos: pueden abrir partes y no tienen tope de 3/24 h ni de red. El resto de Gmail no entra. */
+export const UNLIMITED_REQUESTER_EMAILS = [
+  "andrescanorodriguez@gmail.com",
+  "agumasero@gmail.com",
 ] as const
 
 export const EMAIL_DOMAIN_MESSAGE = "Debes utilizar un correo corporativo del Grupo Montaigne"
@@ -26,6 +33,10 @@ export function isAllowedRequesterEmail(value: string): boolean {
   if ((ALLOWED_EMAIL_EXCEPTIONS as readonly string[]).includes(email)) return true
   const domain = email.slice(email.lastIndexOf("@") + 1)
   return (ALLOWED_EMAIL_DOMAINS as readonly string[]).includes(domain)
+}
+
+export function isUnlimitedRequesterEmail(value: string): boolean {
+  return (UNLIMITED_REQUESTER_EMAILS as readonly string[]).includes(normalizeEmail(value))
 }
 
 export function requesterEmailFieldError(value: string): string | null {

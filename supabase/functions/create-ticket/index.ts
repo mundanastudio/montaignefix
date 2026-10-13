@@ -1,7 +1,12 @@
 // Formulario público. verify_jwt = false: no hay sesión, la anon key solo llama aquí.
 // La service role no sale de esta función. El aviso a Fran no impide crear el parte.
 import { createClient } from "npm:@supabase/supabase-js@2"
-import { EMAIL_LIMIT_MESSAGE, normalizeEmail, requesterEmailFieldError } from "../_shared/allowedEmails.ts"
+import {
+  EMAIL_LIMIT_MESSAGE,
+  isUnlimitedRequesterEmail,
+  normalizeEmail,
+  requesterEmailFieldError,
+} from "../_shared/allowedEmails.ts"
 import { notifyNew, sendNotice } from "../_shared/email.ts"
 import { clientIp } from "../_shared/http.ts"
 import { MAX_FORM_PHOTOS, MAX_PHOTO_BYTES, removeStorage, uploadTicketPhotos } from "../_shared/photos.ts"
@@ -103,9 +108,9 @@ Deno.serve(async (req) => {
     console.error("staff", managerError.code)
     return json(500, { ok: false, message: "No se ha podido enviar el parte. Inténtalo de nuevo más tarde." })
   }
-  const exempt = (managers ?? []).some(
-    (row) => typeof row.email === "string" && row.email.toLowerCase() === email,
-  )
+  const exempt =
+    isUnlimitedRequesterEmail(email) ||
+    (managers ?? []).some((row) => typeof row.email === "string" && row.email.toLowerCase() === email)
 
   if (!exempt) {
     const since = new Date(Date.now() - WINDOW_MS).toISOString()
