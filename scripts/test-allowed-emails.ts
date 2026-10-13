@@ -29,6 +29,8 @@ describe("isAllowedRequesterEmail", () => {
     "  profe@grupomontaigne.com  ",
     "curromena89@gmail.com",
     "  CurroMena89@Gmail.com ",
+    "andrescanorodriguez@gmail.com",
+    "  AndresCanoRodriguez@Gmail.com ",
   ]
   for (const email of allowed) {
     it(`acepta ${JSON.stringify(email)}`, () => {

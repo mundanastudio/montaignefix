@@ -6,7 +6,10 @@ export const ALLOWED_EMAIL_DOMAINS = [
   "mundana.us",
 ] as const
 
-export const ALLOWED_EMAIL_EXCEPTIONS = ["curromena89@gmail.com"] as const
+export const ALLOWED_EMAIL_EXCEPTIONS = [
+  "curromena89@gmail.com",
+  "andrescanorodriguez@gmail.com",
+] as const
 
 export const EMAIL_DOMAIN_MESSAGE = "Debes utilizar un correo corporativo del Grupo Montaigne"
 export const EMAIL_LIMIT_MESSAGE = "Debes esperar 24h para poder abrir un parte nuevo"
