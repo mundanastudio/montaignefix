@@ -22,6 +22,7 @@ describe("normalizeEmail", () => {
 describe("isAllowedRequesterEmail", () => {
   const allowed = [
     "profe@grupomontaignesevilla.com",
+    "profe@colegiomontaignesevilla.com",
     "profe@grupomontaigne.com",
     "profe@mundana.us",
     "PROFE@GRUPOMONTAIGNE.COM",
@@ -39,6 +40,7 @@ describe("isAllowedRequesterEmail", () => {
     "otro@gmail.com",
     "nombre@grupomontaigne.com.falso.com",
     "profe@sub.grupomontaigne.com",
+    "profe@sub.colegiomontaignesevilla.com",
     "sinarroba",
     "a@",
     "@grupomontaigne.com",

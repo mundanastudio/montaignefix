@@ -2,6 +2,7 @@
 export const ALLOWED_EMAIL_DOMAINS = [
   "grupomontaigne.com",
   "grupomontaignesevilla.com",
+  "colegiomontaignesevilla.com",
   "mundana.us",
 ] as const
 
