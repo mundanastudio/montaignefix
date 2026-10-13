@@ -1,8 +1,8 @@
 import { rpc, serveAdmin, uuid } from "../_shared/admin.ts"
-import { notifyClosed, notifyRejected, notifyResolved } from "../_shared/email.ts"
+import { notifyClosed, notifyDuplicated, notifyRejected, notifyResolved } from "../_shared/email.ts"
 import { HttpError, text } from "../_shared/http.ts"
 
-const ALLOWED = new Set(["en_curso", "en_espera", "resuelto", "cerrado", "rechazado", "duplicado", "reabrir"])
+const ALLOWED = new Set(["en_curso", "en_espera", "resuelto", "cerrado", "rechazado", "duplicado", "quitar_duplicado", "reabrir"])
 
 serveAdmin(async (staff, body) => {
   const status = text(body.status)
@@ -17,7 +17,14 @@ serveAdmin(async (staff, body) => {
     p_reason: reason || null,
   })
   if (status === "resuelto") await notifyResolved(ticketId, staff.id, staff.name)
-  if (status === "cerrado") await notifyClosed(ticketId)
+  if (status === "cerrado") {
+    const mail = await notifyClosed(ticketId)
+    return { ...result, emailError: mail.error }
+  }
+  if (status === "duplicado") {
+    const mail = await notifyDuplicated(ticketId)
+    return { ...result, emailError: mail.error }
+  }
   if (status === "rechazado") {
     const mail = await notifyRejected(ticketId, reason)
     return { ...result, emailError: mail.error }

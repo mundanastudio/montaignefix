@@ -72,6 +72,10 @@ export function subjectRechazado(codigo, reparacion) {
   return `Sobre tu solicitud ${codigo}: ${clip(reparacion, 60)}`
 }
 
+export function subjectDuplicado(codigo) {
+  return `Tu aviso ${codigo} ya estaba registrado`
+}
+
 export function firstName(value) {
   const text = plain(value)
   return text.split(/\s+/)[0] ?? text

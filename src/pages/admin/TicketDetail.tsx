@@ -66,6 +66,12 @@ interface Ticket {
   closedAt: string | null
 }
 
+interface LinkedTicket {
+  code: string
+  description: string
+  location: string
+}
+
 const FLOW = [
   ["en_curso", "En curso"],
   ["en_espera", "En espera"],
@@ -85,15 +91,18 @@ export function TicketDetail() {
   const [events, setEvents] = useState<HistoryEvent[]>([])
   const [materials, setMaterials] = useState<Material[]>([])
   const [photos, setPhotos] = useState<TicketPhoto[]>([])
+  const [linkedDuplicates, setLinkedDuplicates] = useState<LinkedTicket[]>([])
+  const [openTickets, setOpenTickets] = useState<LinkedTicket[]>([])
   const [assignee, setAssignee] = useState("")
   const [note, setNote] = useState("")
   const [duplicateCode, setDuplicateCode] = useState("")
+  const [duplicateQuery, setDuplicateQuery] = useState("")
   const [rejectReason, setRejectReason] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [dialog, setDialog] = useState<"cerrar" | "reabrir" | "rechazar" | "duplicado" | "borrar" | null>(null)
+  const [dialog, setDialog] = useState<"cerrar" | "reabrir" | "rechazar" | "duplicado" | "quitar" | "borrar" | null>(null)
   const codeRef = useRef(code)
   const loadSeq = useRef(0)
   codeRef.current = code
@@ -108,6 +117,8 @@ export function TicketDetail() {
       events: HistoryEvent[]
       materials: Material[]
       photos: TicketPhoto[]
+      linkedDuplicates?: LinkedTicket[]
+      openTickets?: LinkedTicket[]
     }>("admin-ticket", { code: requested })
     if (seq !== loadSeq.current || requested !== codeRef.current) return
     setLoading(false)
@@ -123,6 +134,8 @@ export function TicketDetail() {
     setEvents(result.events)
     setMaterials(result.materials)
     setPhotos(result.photos ?? [])
+    setLinkedDuplicates(result.linkedDuplicates ?? [])
+    setOpenTickets(result.openTickets ?? [])
     setAssignee(result.ticket.assigneeId ?? "")
   }
 
@@ -132,7 +145,10 @@ export function TicketDetail() {
     setAssignee("")
     setNote("")
     setDuplicateCode("")
+    setDuplicateQuery("")
     setRejectReason("")
+    setLinkedDuplicates([])
+    setOpenTickets([])
     setPhotos([])
     setError(null)
     setNotice(null)
@@ -153,6 +169,13 @@ export function TicketDetail() {
     if (name === "admin-set-status" && body.status === "rechazado" && dialog !== "rechazar") {
       if (typeof body.reason === "string" && body.reason.trim()) setRejectReason(trimmedReason(body.reason))
       setDialog("rechazar")
+      return false
+    }
+    if (name === "admin-set-status" && body.status === "duplicado" && dialog !== "duplicado") {
+      if (typeof body.duplicateCode === "string" && body.duplicateCode.trim()) {
+        setDuplicateCode(body.duplicateCode.trim().toUpperCase())
+      }
+      setDialog("duplicado")
       return false
     }
     const ticketId = viewed.id
@@ -177,6 +200,10 @@ export function TicketDetail() {
     setNotice(result.emailError ? `${okMessage} El email al solicitante no ha salido.` : okMessage)
     setDialog(null)
     if (name === "admin-set-status" && payload.status === "rechazado") setRejectReason("")
+    if (name === "admin-set-status" && payload.status === "duplicado") {
+      setDuplicateCode("")
+      setDuplicateQuery("")
+    }
     return true
   }
 
@@ -225,6 +252,11 @@ export function TicketDetail() {
   const gestion = notes.filter((item) => item.kind === "gestion")
   const internas = notes.filter((item) => item.kind === "interna")
   const back = { pathname: "/gestion", search: params.toString() }
+  const query = duplicateQuery.trim().toLowerCase()
+  const choices = openTickets.filter((item) => {
+    if (!query) return true
+    return `${item.code} ${item.description} ${item.location}`.toLowerCase().includes(query)
+  })
 
   return (
     <div className={styles.stack}>
@@ -300,8 +332,22 @@ export function TicketDetail() {
         </p>
         {ticket.duplicateOf && (
           <p>
-            Duplicado de <Link to={`/gestion/${ticket.duplicateOf}`}>{ticket.duplicateOf}</Link>
+            Unido al parte <Link to={`/gestion/${ticket.duplicateOf}`}>{ticket.duplicateOf}</Link>
           </p>
+        )}
+        {linkedDuplicates.length > 0 && (
+          <div>
+            <h3>Avisos unidos</h3>
+            <ul className={styles.pickList}>
+              {linkedDuplicates.map((item) => (
+                <li key={item.code}>
+                  <Link to={`/gestion/${item.code}`}>
+                    {item.code} · {item.description} · {item.location}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         {ticket.status === "rechazado" && ticket.rejectionReason && (
           <div>
@@ -362,23 +408,40 @@ export function TicketDetail() {
               Cerrar
             </Button>
           )}
-          {ticket.status !== "rechazado" && (
+          {ticket.status !== "rechazado" && ticket.status !== "duplicado" && (
             <Button variant="danger" disabled={busy} onClick={() => setDialog("rechazar")}>
               Rechazar
+            </Button>
+          )}
+          {!terminal && (
+            <Button variant="secondary" disabled={busy} onClick={() => setDialog("duplicado")}>
+              Marcar como duplicado
             </Button>
           )}
           <Button variant="danger" disabled={busy} onClick={() => setDialog("borrar")}>
             Borrar incidencia
           </Button>
         </div>
-        {terminal && (
+        {ticket.status === "duplicado" && (
+          <div className={styles.actions}>
+            <Button variant="primary" disabled={busy} onClick={() => setDialog("quitar")}>
+              Quitar duplicado
+            </Button>
+          </div>
+        )}
+        {(ticket.status === "cerrado" || ticket.status === "rechazado") && (
           <div className={styles.actions}>
             <Button variant="primary" disabled={busy} onClick={() => setDialog("reabrir")}>
               Reabrir
             </Button>
           </div>
         )}
-        {terminal && <p className={styles.hint}>Para seguir con ella, primero hay que reabrirla.</p>}
+        {ticket.status === "duplicado" && (
+          <p className={styles.hint}>Si se marcó por error, quita el duplicado y el parte vuelve a como estaba.</p>
+        )}
+        {(ticket.status === "cerrado" || ticket.status === "rechazado") && (
+          <p className={styles.hint}>Para seguir con ella, primero hay que reabrirla.</p>
+        )}
       </section>
 
       <section className={styles.block}>
@@ -404,33 +467,6 @@ export function TicketDetail() {
           </Button>
         </div>
       </section>
-
-      {ticket.status !== "duplicado" && (
-        <section className={styles.block}>
-          <h3>Marcar como duplicado</h3>
-          <form
-            className={styles.rowActions}
-            onSubmit={(event) => {
-              event.preventDefault()
-              setDialog("duplicado")
-            }}
-          >
-            <label className={styles.filter}>
-              Código de la original
-              <input
-                className={styles.control}
-                value={duplicateCode}
-                placeholder="MF-0001"
-                onChange={(event) => setDuplicateCode(event.target.value)}
-                required
-              />
-            </label>
-            <Button type="submit" variant="secondary" disabled={busy}>
-              Marcar como duplicado
-            </Button>
-          </form>
-        </section>
-      )}
 
       <div className={styles.noteCols}>
         <section className={styles.block}>
@@ -532,13 +568,65 @@ export function TicketDetail() {
       <Confirm
         open={dialog === "duplicado"}
         title="Marcar como duplicado"
-        acceptLabel="Aceptar"
+        acceptLabel="Unir"
+        busy={busy}
+        acceptDisabled={duplicateCode.trim() === ""}
+        onCancel={() => {
+          setDialog(null)
+          setDuplicateCode("")
+          setDuplicateQuery("")
+        }}
+        onAccept={() =>
+          void run(
+            "admin-set-status",
+            { status: "duplicado", duplicateCode },
+            `Unido al parte ${duplicateCode.trim().toUpperCase()}.`,
+          )
+        }
+      >
+        <p>Elige el parte abierto al que se une {ticket.code}. Es obligatorio.</p>
+        <label className={styles.filter}>
+          Buscar
+          <input
+            className={styles.control}
+            value={duplicateQuery}
+            placeholder="Código, reparación o lugar"
+            onChange={(event) => setDuplicateQuery(event.target.value)}
+          />
+        </label>
+        {choices.length === 0 ? (
+          <p className={styles.muted}>No hay partes abiertos a los que unirlo.</p>
+        ) : (
+          <ul className={styles.pickList}>
+            {choices.map((item) => (
+              <li key={item.code}>
+                <Button
+                  type="button"
+                  variant={duplicateCode === item.code ? "primary" : "secondary"}
+                  aria-pressed={duplicateCode === item.code}
+                  className={styles.pickItem}
+                  onClick={() => setDuplicateCode(item.code)}
+                >
+                  <span>
+                    {item.code} · {item.description}
+                  </span>
+                  <span className={styles.pickMeta}>{item.location}</span>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Confirm>
+      <Confirm
+        open={dialog === "quitar"}
+        title="Quitar duplicado"
+        acceptLabel="Quitar duplicado"
         busy={busy}
         onCancel={() => setDialog(null)}
-        onAccept={() => void run("admin-set-status", { status: "duplicado", duplicateCode }, `Marcada como duplicado de ${duplicateCode.trim().toUpperCase()}.`)}
+        onAccept={() => void run("admin-set-status", { status: "quitar_duplicado" }, "Ya no está unido a otro parte.")}
       >
         <p>
-          Vas a marcar {ticket.code} como duplicado de {duplicateCode.trim().toUpperCase()}.
+          Vas a quitar el duplicado de {ticket.code}. Volverá al estado que tenía antes. El historial se queda. Si ya salió el email al solicitante, no se puede retirar.
         </p>
       </Confirm>
     </div>

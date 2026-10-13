@@ -2,6 +2,8 @@
 import {
   cerradoHtml,
   cerradoTxt,
+  duplicadoHtml,
+  duplicadoTxt,
   franNuevoHtml,
   franNuevoTxt,
   franResueltoHtml,
@@ -21,13 +23,15 @@ import {
   render,
   subjectFranNuevo,
   subjectFranResuelto,
+  subjectDuplicado,
   subjectRecibido,
   subjectRechazado,
   subjectSolucionado,
 } from "./email-render.mjs"
+import { sameRequesterEmail, uniqueClosedRecipients } from "./duplicateMail.ts"
 import { db } from "./http.ts"
 
-type Kind = "nuevo" | "recibido" | "resuelto" | "cerrado" | "rechazado" | "prueba" | "informe" | "aviso"
+type Kind = "nuevo" | "recibido" | "resuelto" | "cerrado" | "rechazado" | "duplicado" | "prueba" | "informe" | "aviso"
 
 interface Outgoing {
   kind: Kind
@@ -369,12 +373,13 @@ interface TicketMail {
   resolved_at: string | null
   closed_at: string | null
   priority: string | null
+  duplicate_of: string | null
 }
 
 async function loadTicket(id: string): Promise<TicketMail | null> {
   const { data, error } = await db()
     .from("tickets")
-    .select("id, code, requester_name, requester_email, description, location, requester_notes, created_at, resolved_at, closed_at, priority")
+    .select("id, code, requester_name, requester_email, description, location, requester_notes, created_at, resolved_at, closed_at, priority, duplicate_of")
     .eq("id", id)
     .maybeSingle()
   if (error || !data) return null
@@ -588,21 +593,16 @@ export async function notifyRejected(ticketId: string, reason: string): Promise<
   })
 }
 
-export async function notifyClosed(ticketId: string): Promise<void> {
-  const ticket = await loadTicket(ticketId)
-  if (!ticket) {
-    await record({ ticketId, kind: "cerrado", recipient: "", subject: "Parte cerrado", ok: false, error: "No se ha podido leer el parte para avisar al solicitante." })
-    return
-  }
+async function sendClosedMail(ticket: TicketMail): Promise<{ ok: boolean; error: string | null }> {
   const links = urls()
   const subject = subjectSolucionado(ticket.description, ticket.code)
   if (!links) {
-    await record({ ticketId, kind: "cerrado", recipient: ticket.requester_email, subject, ok: false, error: "Falta APP_PUBLIC_URL." })
-    return
+    await record({ ticketId: ticket.id, kind: "cerrado", recipient: ticket.requester_email, subject, ok: false, error: "Falta APP_PUBLIC_URL." })
+    return { ok: false, error: "Falta APP_PUBLIC_URL." }
   }
-  await rendered({
+  return rendered({
     kind: "cerrado",
-    ticketId,
+    ticketId: ticket.id,
     to: ticket.requester_email,
     subject,
     htmlTemplate: cerradoHtml,
@@ -614,6 +614,104 @@ export async function notifyClosed(ticketId: string): Promise<void> {
       lugar: plain(ticket.location),
       fecha_apertura: fechaLarga(ticket.created_at),
       fecha_cierre: fechaLarga(ticket.closed_at ?? new Date().toISOString()),
+      url_formulario: links.formulario,
+      url_assets: links.assets,
+    },
+  })
+}
+
+export async function notifyClosed(ticketId: string): Promise<{ ok: boolean; error: string | null }> {
+  const ticket = await loadTicket(ticketId)
+  if (!ticket) {
+    await record({ ticketId, kind: "cerrado", recipient: "", subject: "Parte cerrado", ok: false, error: "No se ha podido leer el parte para avisar al solicitante." })
+    return { ok: false, error: "No se ha podido leer el parte para avisar al solicitante." }
+  }
+  const primary = await sendClosedMail(ticket)
+  const { data } = await db()
+    .from("tickets")
+    .select("id, code, requester_name, requester_email, description, location, created_at, closed_at")
+    .eq("duplicate_of", ticketId)
+    .order("code", { ascending: true })
+  const extras = uniqueClosedRecipients(ticket.requester_email, (data ?? []) as Array<TicketMail & { requester_email: string }>)
+  let error = primary.error
+  for (const row of extras) {
+    const mail = await sendClosedMail({
+      ...ticket,
+      id: String(row.id),
+      code: String(row.code),
+      requester_name: String(row.requester_name),
+      requester_email: String(row.requester_email),
+      description: String(row.description),
+      location: String(row.location),
+      created_at: String(row.created_at),
+      closed_at: ticket.closed_at,
+    })
+    if (!mail.ok) error = error ?? mail.error
+  }
+  return { ok: error === null, error }
+}
+
+export async function notifyDuplicated(ticketId: string): Promise<{ ok: boolean; error: string | null }> {
+  const ticket = await loadTicket(ticketId)
+  if (!ticket) {
+    await record({ ticketId, kind: "duplicado", recipient: "", subject: "Tu aviso ya estaba registrado", ok: false, error: "No se ha podido leer el parte para avisar al solicitante." })
+    return { ok: false, error: "No se ha podido leer el parte para avisar al solicitante." }
+  }
+  const original = ticket.duplicate_of ? await loadTicket(ticket.duplicate_of) : null
+  const subject = subjectDuplicado(ticket.code)
+  if (!original) {
+    await record({ ticketId, kind: "duplicado", recipient: ticket.requester_email, subject, ok: false, error: "No se ha podido leer el parte original." })
+    return { ok: false, error: "No se ha podido leer el parte original." }
+  }
+  if (sameRequesterEmail(ticket.requester_email, original.requester_email)) {
+    return { ok: true, error: null }
+  }
+  const links = urls()
+  if (!links) {
+    await record({ ticketId, kind: "duplicado", recipient: ticket.requester_email, subject, ok: false, error: "Falta APP_PUBLIC_URL." })
+    return { ok: false, error: "Falta APP_PUBLIC_URL." }
+  }
+  return rendered({
+    kind: "duplicado",
+    ticketId,
+    to: ticket.requester_email,
+    subject,
+    htmlTemplate: duplicadoHtml,
+    textTemplate: duplicadoTxt,
+    vars: {
+      nombre: firstName(ticket.requester_name),
+      codigo: ticket.code,
+      codigo_original: original.code,
+      reparacion: plain(ticket.description),
+      lugar: plain(ticket.location),
+      fecha_apertura: fechaLarga(ticket.created_at),
+      url_formulario: links.formulario,
+      url_assets: links.assets,
+    },
+  })
+}
+
+export async function sendDuplicadoSample(to: string, name: string): Promise<{ ok: boolean; error: string | null }> {
+  const links = urls()
+  const opened = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+  const subject = subjectDuplicado("MF-PRUEBA")
+  if (!links) {
+    await record({ kind: "prueba", recipient: to, subject, ok: false, error: "Falta APP_PUBLIC_URL." })
+    return { ok: false, error: "Falta APP_PUBLIC_URL." }
+  }
+  return rendered({
+    kind: "prueba",
+    to,
+    subject,
+    htmlTemplate: duplicadoHtml,
+    textTemplate: duplicadoTxt,
+    vars: {
+      nombre: firstName(name) || "Fran",
+      codigo: "MF-PRUEBA",
+      codigo_original: "MF-0007",
+      reparacion: "Prueba de correo: la persiana del aula no sube",
+      lugar: "Aula 3",
+      fecha_apertura: fechaLarga(opened),
       url_formulario: links.formulario,
       url_assets: links.assets,
     },

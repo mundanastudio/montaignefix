@@ -1,5 +1,5 @@
 import { serveAdmin } from "../_shared/admin.ts"
-import { listEmails, sendClosedSample, sendRejectedSample } from "../_shared/email.ts"
+import { listEmails, sendClosedSample, sendDuplicadoSample, sendRejectedSample } from "../_shared/email.ts"
 import { db } from "../_shared/http.ts"
 
 serveAdmin(async (staff) => {
@@ -8,7 +8,8 @@ serveAdmin(async (staff) => {
   const name = typeof data?.name === "string" ? data.name : staff.name
   const closed = await sendClosedSample(to, name)
   const rejected = await sendRejectedSample(to, name)
-  const sent = closed.ok && rejected.ok
-  const emailError = closed.error ?? rejected.error
+  const duplicated = await sendDuplicadoSample(to, name)
+  const sent = closed.ok && rejected.ok && duplicated.ok
+  const emailError = closed.error ?? rejected.error ?? duplicated.error
   return { sent, emailError, emails: await listEmails() }
 })

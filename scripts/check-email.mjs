@@ -14,6 +14,7 @@ import {
   firstName,
   subjectRecibido,
   subjectRechazado,
+  subjectDuplicado,
   subjectSolucionado,
 } from "../supabase/functions/_shared/email-render.mjs"
 
@@ -54,6 +55,7 @@ assert.equal(subjectFranResuelto("Fran", "MF-0042", "a".repeat(80)), `Fran ha re
 assert.equal(subjectSolucionado("a".repeat(80), "MF-0042"), `✓ Solucionado: ${"a".repeat(60)} (MF-0042)`)
 assert.equal(subjectRechazado("MF-0042", "a".repeat(80)), `Sobre tu solicitud MF-0042: ${"a".repeat(60)}`)
 assert.equal(subjectRechazado("MF-0042", "Persiana").toLowerCase().includes("rechaz"), false)
+assert.equal(subjectDuplicado("MF-0042"), "Tu aviso MF-0042 ya estaba registrado")
 assert.equal(firstName("María José Pérez"), "María")
 
 const motivo = "Línea 1\nLínea 2 <b>no</b> & más"
@@ -184,7 +186,28 @@ const resuelto = render(
 assert.equal(resuelto.includes("material(es)"), false)
 assert.equal(resuelto.includes("Nota de"), false)
 
-for (const name of ["recibido.html", "recibido.txt", "fran-nuevo.html", "fran-nuevo.txt", "fran-resuelto.html", "fran-resuelto.txt", "cerrado.html", "cerrado.txt", "rechazado.html", "rechazado.txt"]) {
+const duplicadoVars = {
+  nombre: firstName("María José Pérez"),
+  codigo: "MF-0042",
+  codigo_original: "MF-0007",
+  reparacion: "Persiana",
+  lugar: "Aula 3",
+  fecha_apertura: "12 de octubre de 2026",
+  url_formulario: "https://ejemplo.pages.dev/",
+  url_assets: "https://ejemplo.pages.dev/email",
+}
+const duplicadoHtml = render(readFileSync(join(dir, "duplicado.html"), "utf8"), duplicadoVars, true)
+assert.equal(duplicadoHtml.includes("Hola María,"), true)
+assert.equal(duplicadoHtml.includes("José"), false)
+assert.equal(duplicadoHtml.includes("MF-0042"), true)
+assert.equal(duplicadoHtml.includes("MF-0007"), true)
+assert.equal(duplicadoHtml.includes("{{"), false)
+const duplicadoTxt = render(readFileSync(join(dir, "duplicado.txt"), "utf8"), duplicadoVars, false)
+assert.equal(duplicadoTxt.includes("Hola María,"), true)
+assert.equal(duplicadoTxt.includes("MF-0007"), true)
+assert.equal(duplicadoTxt.includes("MF-0042"), true)
+
+for (const name of ["recibido.html", "recibido.txt", "fran-nuevo.html", "fran-nuevo.txt", "fran-resuelto.html", "fran-resuelto.txt", "cerrado.html", "cerrado.txt", "rechazado.html", "rechazado.txt", "duplicado.html", "duplicado.txt"]) {
   assert.equal(readFileSync(join(dir, name), "utf8"), readFileSync(join(assets, name), "utf8"), name)
 }
 

@@ -45,12 +45,14 @@ El solicitante **no ve el estado** de su parte: solo recibe el email final.
 - Ficha de cada incidencia con todos los datos, la galería de fotos (miniaturas, visor a pantalla, deslizar / flechas) y el historial completo.
 - Puede añadir fotos (hasta 10 por parte, también si está cerrado) y borrar cualquiera, incluidas las del solicitante y las de un técnico.
 - Puede: asignar prioridad (P1/P2/P3), cambiar estado, asignar o reasignar a Fran/Agustín/Andrés, añadir **observaciones de gestión**, cerrar (desde cualquier estado abierto, sin pasar por Resuelto), reabrir, rechazar (con motivo obligatorio de 10–500 caracteres, que recibe el solicitante por email) o marcar como duplicado.
+- **Duplicado**: hay que elegir un parte **abierto** (buscador: código, reparación, lugar). No se une a sí mismo ni a uno cerrado, rechazado o ya duplicado. En la ficha unida: «Unido al parte MF-XXXX». En la original: «Avisos unidos».
+- **Quitar duplicado** (no Reabrir): vuelve al estado que tenía, con el mismo técnico y prioridad. Se borra la relación; el historial se queda. Si ya salió el email, no se retira. Reabrir un duplicado no vale.
 - Al asignar se guarda la fecha de asignación (vía historial, sección 5).
 - Sección **"Lista de la compra"** (ver 3.4), con un contador de artículos pendientes visible en la navegación del panel.
 
 ### 3.3 Panel del equipo — `/equipo`
-- Pestañas: **"Mis tareas"**, **"Sin asignar"**, **"Todas"** (pendientes y cerradas).
-- Ven todas las incidencias; **solo pueden modificar las que tienen asignadas**, y solo:
+- Pestañas: **"Mis tareas"**, **"Sin asignar"**, **"Todas"** (pendientes y cerradas). Los **duplicados no salen** en ninguna pestaña ni en los contadores, para que el equipo no los coja. La ficha por URL sigue abierta, solo lectura. El servidor tampoco deja tomarlo.
+- Ven todas las incidencias (salvo duplicados en el listado); **solo pueden modificar las que tienen asignadas**, y solo:
   - el estado (En curso, En espera, Resuelto),
   - sus **observaciones internas**.
 - Pueden **asignarse** una incidencia sin asignar, **quitarse** una que tengan y **reasignarla** a otro compañero.
@@ -92,7 +94,7 @@ El solicitante **no ve el estado** de su parte: solo recibe el email final.
 | Añadir / editar / borrar materiales | ✅ (cualquier incidencia, también cerrada) | ✅ (cualquier incidencia abierta; en Cerrado / Rechazado / Duplicado solo lectura) |
 | Marcar materiales como comprados / volver a pendiente | ✅ | ❌ |
 
-Reabrir una incidencia cerrada la devuelve a `Asignado` (si tiene técnico) o `Nuevo`.
+Reabrir una incidencia cerrada o rechazada la devuelve a `Asignado` (si tiene técnico) o `Nuevo`. Quitar duplicado la deja como estaba (no usa Reabrir).
 
 **Prioridades:**
 - **P1** — Urgente o de seguridad: hoy.
@@ -106,10 +108,10 @@ Cada incidencia tiene un código legible: **MF-0001, MF-0002…**
 Proyecto Supabase existente del usuario. Si ya aloja otra herramienta, crear todo en un **schema propio `montaigne_fix`**.
 
 Tablas mínimas (ajusta nombres si lo ves mejor, pero justifícalo):
-- `tickets`: id, código MF-XXXX, nombre y email del solicitante, reparación, lugar, observaciones del solicitante, `photo_path` (antigua, deprecada; no se borra hasta confirmación), estado, prioridad, técnico asignado, fechas (`created_at`, `assigned_at`, `resolved_at`, `closed_at`, `updated_at`), `rejection_reason` (motivo actual si está rechazado; se vacía al reabrir y se borra con el parte).
+- `tickets`: id, código MF-XXXX, nombre y email del solicitante, reparación, lugar, observaciones del solicitante, `photo_path` (antigua, deprecada; no se borra hasta confirmación), estado, prioridad, técnico asignado, `duplicate_of` (el parte original si está duplicado; se vacía al quitar duplicado o al cambiar de estado), fechas (`created_at`, `assigned_at`, `resolved_at`, `closed_at`, `updated_at`), `rejection_reason` (motivo actual si está rechazado; se vacía al reabrir y se borra con el parte).
 - `ticket_photos`: hasta 10 fotos por parte (`path`, `sort_order`, `uploaded_by` nulo = solicitante). Rutas nuevas `{ticket_id}/{uuid}.jpg`; las antiguas `{ticket_id}.jpg` se copian tal cual en la migración.
 - `storage_orphans`: rutas cuya fila se borró pero Storage no las quitó (para limpiar a mano).
-- `ticket_events`: **historial** de todo cambio (quién, qué, valor anterior, valor nuevo, cuándo). Fuente de verdad para fechas y para los informes. Incluye `foto_anadida` / `foto_borrada` cuando un técnico o Gestión añade o borra después (las del formulario no generan evento).
+- `ticket_events`: **historial** de todo cambio (quién, qué, valor anterior, valor nuevo, cuándo). Fuente de verdad para fechas y para los informes. Incluye `foto_anadida` / `foto_borrada` cuando un técnico o Gestión añade o borra después (las del formulario no generan evento) y `duplicado` al unir un aviso («Unió el aviso al parte MF-XXXX»).
 - `ticket_notes`: observaciones con tipo (`gestion` | `interna`), autor y fecha. Las observaciones del solicitante van en `tickets`.
 - `staff`: Fran, Agustín, Andrés (y Curro como admin), con nombre, email y rol.
 - `shopping_items` (lista de la compra), un registro por artículo:
@@ -147,12 +149,13 @@ Solo se envían estos emails:
 | Se abre un parte | Solicitante | Acuse de recibo: "ya estamos en ello", con el código MF-XXXX |
 | Se abre un parte | Fran | Todos los datos + las fotos (hasta 3: incrustadas `cid:foto-1`… y adjuntas). Añadir fotos después no envía correo. |
 | Un técnico marca **Resuelto** | Fran | Aviso para que lo revise y lo cierre |
-| Fran marca **Cerrado** | Solicitante | "Tu solicitud MF-XXXX (reparación, lugar) ya está solucionada. Gracias." |
-| Fran marca **Rechazado** | Solicitante | Explica el motivo (el texto que escribió Gestión). Asunto: `Sobre tu solicitud MF-XXXX: …`. Marcar como duplicado no envía correo. |
+| Fran marca **Cerrado** | Solicitante | "Tu solicitud MF-XXXX (reparación, lugar) ya está solucionada. Gracias." También a cada solicitante distinto de los avisos unidos, con el código, la reparación y el lugar **de su** parte. Los unidos siguen en estado duplicado. |
+| Fran marca **Rechazado** | Solicitante | Explica el motivo (el texto que escribió Gestión). Asunto: `Sobre tu solicitud MF-XXXX: …`. No se avisa a los avisos unidos. |
+| Fran marca **Duplicado** | Solicitante del aviso unido | Asunto: `Tu aviso MF-XXXX ya estaba registrado`. Variables: nombre de pila, código, código original, reparación, lugar, fecha de apertura. Si el email es el mismo que el del original, no se envía. Un fallo de SMTP no deshace el marcado; queda en el log y Gestión ve aviso. Quitar duplicado no retira un correo ya enviado. |
 | Miércoles 8:00 | Fran | Informe semanal |
 | Anual (ver 8) | Fran y Curro | Informe anual |
 
-Las plantillas HTML y de texto están en `assets/email/` y se copian a `supabase/functions/_shared/email-templates/` (recibido, fran-nuevo, fran-resuelto, cerrado, rechazado). Usarlas tal cual; ver `assets/email/LEEME-CURSOR.md`.
+Las plantillas HTML y de texto están en `assets/email/` y se copian a `supabase/functions/_shared/email-templates/` (recibido, fran-nuevo, fran-resuelto, cerrado, rechazado, duplicado). Usarlas tal cual; ver `assets/email/LEEME-CURSOR.md`.
 
 ## 7. Informes
 

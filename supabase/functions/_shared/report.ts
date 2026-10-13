@@ -117,6 +117,7 @@ function historyLine(type: string, oldValue: string | null, newValue: string | n
   if (type === "material_editado") return `Cambió el material «${oldValue ?? ""}» por «${newValue ?? ""}»`
   if (type === "foto_anadida") return "Añadió una foto"
   if (type === "foto_borrada") return "Borró una foto"
+  if (type === "duplicado") return `Unió el aviso al parte ${newValue ?? ""}`
   return "Registró un cambio"
 }
 

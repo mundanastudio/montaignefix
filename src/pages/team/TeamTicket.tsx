@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react"
-import { useOutletContext, useParams } from "react-router-dom"
+import { Link, useOutletContext, useParams } from "react-router-dom"
 import { Alert } from "../../components/ui/Alert"
 import { PriorityBadge, StatusBadge } from "../../components/ui/Badge"
 import { Button } from "../../components/ui/Button"
@@ -57,9 +57,16 @@ interface Ticket {
   assignee: string | null
   assigneeId: string | null
   mine: boolean
+  duplicateOf: string | null
   rejectionReason: string | null
   resolvedAt: string | null
   createdAt: string
+}
+
+interface LinkedTicket {
+  code: string
+  description: string
+  location: string
 }
 
 const FLOW = [
@@ -79,6 +86,7 @@ export function TeamTicket() {
   const [events, setEvents] = useState<HistoryEvent[]>([])
   const [materials, setMaterials] = useState<Material[]>([])
   const [photos, setPhotos] = useState<TicketPhoto[]>([])
+  const [linkedDuplicates, setLinkedDuplicates] = useState<LinkedTicket[]>([])
   const [note, setNote] = useState("")
   const [colleague, setColleague] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -101,6 +109,7 @@ export function TeamTicket() {
       events: HistoryEvent[]
       materials: Material[]
       photos: TicketPhoto[]
+      linkedDuplicates?: LinkedTicket[]
     }>("staff-ticket", { code: requested })
     if (seq !== loadSeq.current || requested !== codeRef.current) return
     setLoading(false)
@@ -117,6 +126,7 @@ export function TeamTicket() {
     setEvents(result.events)
     setMaterials(result.materials)
     setPhotos(result.photos ?? [])
+    setLinkedDuplicates(result.linkedDuplicates ?? [])
   }
 
   useEffect(() => {
@@ -125,6 +135,7 @@ export function TeamTicket() {
     setColleague("")
     setNote("")
     setPhotos([])
+    setLinkedDuplicates([])
     setError(null)
     setNotice(null)
     setDialog(null)
@@ -253,6 +264,23 @@ export function TeamTicket() {
             return ok
           }}
         />
+        {ticket.duplicateOf && (
+          <p>
+            Unido al parte <Link to={`/equipo/${ticket.duplicateOf}`}>{ticket.duplicateOf}</Link>
+          </p>
+        )}
+        {linkedDuplicates.length > 0 && (
+          <div>
+            <h3>Avisos unidos</h3>
+            {linkedDuplicates.map((item) => (
+              <p key={item.code}>
+                <Link to={`/equipo/${item.code}`}>
+                  {item.code} · {item.description} · {item.location}
+                </Link>
+              </p>
+            ))}
+          </div>
+        )}
         {ticket.status === "rechazado" && ticket.rejectionReason && (
           <div>
             <h3>Motivo del rechazo</h3>

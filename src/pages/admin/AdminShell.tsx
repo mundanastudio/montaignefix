@@ -127,7 +127,7 @@ export function AdminShell() {
       if (!result.expired) setReportNotice(result.message)
       return
     }
-    setReportNotice(result.sent ? "Emails de prueba enviados (cerrado y rechazado)." : result.emailError ?? "No se han podido enviar los emails de prueba.")
+    setReportNotice(result.sent ? "Emails de prueba enviados (cerrado, rechazado y duplicado)." : result.emailError ?? "No se han podido enviar los emails de prueba.")
   }
 
   async function closeTeamSessions() {
@@ -280,7 +280,7 @@ export function AdminShell() {
         onCancel={() => setConfirmTestEmail(false)}
         onAccept={() => void sendTestEmails()}
       >
-        Se enviarán al correo de {person.name} una muestra de cerrado y otra de rechazado. No cambia ningún parte real.
+        Se enviarán al correo de {person.name} una muestra de cerrado, otra de rechazado y otra de duplicado. No cambia ningún parte real.
       </Confirm>
     </div>
   )
