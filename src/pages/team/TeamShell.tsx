@@ -177,7 +177,7 @@ export function TeamShell() {
       {location.pathname !== "/equipo" ? (
         <div className={styles.toolbar}>
           <Button variant="accent" onClick={() => navigate({ pathname: "/equipo", search: location.search })}>
-            ⬅️ Volver a las tareas
+            ◀ Volver a las tareas
           </Button>
           <Button variant="secondary" onClick={() => setChanging(true)}>
             Cambiar de persona
