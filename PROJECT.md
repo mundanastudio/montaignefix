@@ -41,7 +41,7 @@ Al enviar → popup: **"Gracias, atenderemos tu solicitud lo antes posible. Reci
 El solicitante **no ve el estado** de su parte: solo recibe el email final.
 
 ### 3.2 Panel del gerente — `/gestion`
-- Listado de todas las incidencias con filtros (estado, prioridad, asignado) y búsqueda por texto.
+- Listado con tres pestañas, como en Equipo: **Abiertas**, **Resueltas** y **Cerradas** (con el recuento). Al entrar se ven las **Abiertas**: cualquier estado salvo Resuelto, Duplicado y Cerrado (el Rechazado sí sale aquí). Un duplicado no aparece en el listado mientras sigue en Duplicado; cuando el original se cierra y el unido pasa a Cerrado, sale en **Cerradas**. **Resueltas** solo las resueltas. Filtros de prioridad, asignado y búsqueda por texto. En Abiertas el orden es prioridad (P1 → P3), luego estado (Nuevo primero); sin prioridad, código ascendente. Resueltas y Cerradas, código descendente. Si está en Asignado, el chip muestra el nombre del técnico con fondo morado, no el texto «Asignado».
 - Ficha de cada incidencia con todos los datos, la galería de fotos (miniaturas, visor a pantalla, deslizar / flechas) y el historial completo.
 - Puede añadir fotos (hasta 10 por parte, también si está cerrado) y borrar cualquiera, incluidas las del solicitante y las de un técnico.
 - Puede: asignar prioridad (P1/P2/P3), cambiar estado, asignar o reasignar a Fran/Agustín/Andrés, añadir **observaciones de gestión**, cerrar (desde cualquier estado abierto, sin pasar por Resuelto), reabrir, rechazar (con motivo obligatorio de 10–500 caracteres, que recibe el solicitante por email) o marcar como duplicado.

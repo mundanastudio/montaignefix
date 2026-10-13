@@ -11,7 +11,9 @@ import styles from "./Admin.module.css"
 interface Counts {
   nuevas: number
   p1Abiertas: number
+  abiertas: number
   resueltas: number
+  cerradas: number
 }
 
 interface Technician {
@@ -43,22 +45,31 @@ interface TicketRow {
 
 const SHOW_CORREOS = false
 
-const STATUSES = [
-  ["", "Todos"],
-  ["nuevo", "Nuevo"],
-  ["asignado", "Asignado"],
-  ["en_curso", "En curso"],
-  ["en_espera", "En espera"],
-  ["resuelto", "Resuelto"],
-  ["cerrado", "Cerrado"],
-  ["rechazado", "Rechazado"],
-  ["duplicado", "Duplicado"],
+const VIEWS = [
+  ["abiertas", "Abiertas"],
+  ["resueltas", "Resueltas"],
+  ["cerradas", "Cerradas"],
 ] as const
+
+type View = (typeof VIEWS)[number][0]
+
+function currentView(value: string | null): View {
+  if (value === "resueltas" || value === "cerradas") return value
+  return "abiertas"
+}
+
+function statusChip(ticket: TicketRow) {
+  const status = statusLabel(ticket.status)
+  if (ticket.status === "asignado" && ticket.assignee) {
+    return <StatusBadge status={status} label={ticket.assignee} />
+  }
+  return <StatusBadge status={status} />
+}
 
 export function TicketList() {
   const { call } = useOutletContext<AdminContextValue>()
   const [params, setParams] = useSearchParams()
-  const status = params.get("estado") ?? ""
+  const tab = currentView(params.get("vista"))
   const priority = params.get("prioridad") ?? ""
   const assigned = params.get("asignado") ?? ""
   const query = params.get("q") ?? ""
@@ -88,7 +99,7 @@ export function TicketList() {
     let active = true
     setLoading(true)
     void call<{ counts: Counts; technicians: Technician[]; tickets: TicketRow[] }>("admin-tickets", {
-      status,
+      tab,
       priority,
       assigned,
       query,
@@ -107,12 +118,13 @@ export function TicketList() {
     return () => {
       active = false
     }
-  }, [call, status, priority, assigned, query])
+  }, [call, tab, priority, assigned, query])
 
   function setFilter(key: string, value: string) {
     const next = new URLSearchParams(params)
     if (value) next.set(key, value)
     else next.delete(key)
+    next.delete("estado")
     setParams(next)
   }
 
@@ -121,7 +133,27 @@ export function TicketList() {
     setFilter("q", draft.trim())
   }
 
-  const filtered = Boolean(status || priority || assigned || query)
+  function tabHref(view: View) {
+    const next = new URLSearchParams(params)
+    next.delete("estado")
+    if (view === "abiertas") next.delete("vista")
+    else next.set("vista", view)
+    const search = next.toString()
+    return search ? `/gestion?${search}` : "/gestion"
+  }
+
+  function clearFilters() {
+    const next = new URLSearchParams()
+    if (tab !== "abiertas") next.set("vista", tab)
+    setParams(next)
+  }
+
+  const filtered = Boolean(priority || assigned || query)
+  const tabCount = (view: View) => {
+    if (!counts) return ""
+    const n = view === "abiertas" ? counts.abiertas : view === "resueltas" ? counts.resueltas : counts.cerradas
+    return ` (${n})`
+  }
 
   return (
     <div className={styles.stack}>
@@ -142,31 +174,21 @@ export function TicketList() {
       </section>
       )}
 
-      <p className={styles.summary} aria-label="Indicadores">
-        <span>
-          <strong>{counts?.nuevas ?? "–"}</strong> <span className={styles.nuevas}>Nuevas</span>
-        </span>
-        <span aria-hidden="true">-</span>
-        <span>
-          <strong>{counts?.p1Abiertas ?? "–"}</strong> <span className={styles.p1}>P1</span>
-        </span>
-        <span aria-hidden="true">-</span>
-        <span>
-          <strong>{counts?.resueltas ?? "–"}</strong> <span className={styles.resueltas}>Resueltas</span>
-        </span>
-      </p>
+      <nav className={styles.viewTabs} aria-label="Incidencias">
+        {VIEWS.map(([value, label]) => (
+          <Link
+            key={value}
+            to={tabHref(value)}
+            className={tab === value ? `${styles.viewTab} ${styles.viewTabOn}` : styles.viewTab}
+            aria-current={tab === value ? "page" : undefined}
+          >
+            {label}
+            {tabCount(value)}
+          </Link>
+        ))}
+      </nav>
 
       <form className={styles.filters} onSubmit={search}>
-        <label className={styles.filter}>
-          Estado
-          <select className={styles.control} value={status} onChange={(event) => setFilter("estado", event.target.value)}>
-            {STATUSES.map(([value, label]) => (
-              <option key={value || "todos"} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
         <label className={styles.filter}>
           Prioridad
           <select className={styles.control} value={priority} onChange={(event) => setFilter("prioridad", event.target.value)}>
@@ -202,21 +224,35 @@ export function TicketList() {
           </label>
           <Button type="submit">Buscar</Button>
           {filtered && (
-            <Button type="button" variant="ghost" onClick={() => setParams(new URLSearchParams())}>
+            <Button type="button" variant="ghost" onClick={clearFilters}>
               Limpiar
             </Button>
           )}
         </div>
       </form>
 
-      <p className={styles.hint}>Por prioridad y, dentro de cada una, de la más antigua a la más nueva.</p>
+      <p className={styles.hint}>
+        {tab === "abiertas"
+          ? "Por prioridad y, dentro de cada una, las nuevas primero. Sin prioridad, de la más antigua a la más nueva."
+          : "De la más reciente a la más antigua."}
+      </p>
       {error && <Alert tone="error">{error}</Alert>}
       {loading && (
         <p className={styles.muted}>
           <Spinner label="Cargando incidencias" /> Cargando incidencias…
         </p>
       )}
-      {!loading && tickets.length === 0 && <Alert>No hay incidencias con esos filtros.</Alert>}
+      {!loading && tickets.length === 0 && (
+        <Alert>
+          {filtered
+            ? "No hay incidencias con esos filtros."
+            : tab === "abiertas"
+              ? "No hay incidencias abiertas."
+              : tab === "resueltas"
+                ? "No hay incidencias resueltas."
+                : "No hay incidencias cerradas."}
+        </Alert>
+      )}
 
       {tickets.length > 0 && <div className={styles.cards}>
         {tickets.map((ticket) => (
@@ -244,6 +280,7 @@ export function TicketList() {
           <tbody>
             {tickets.map((ticket) => {
               const priority = priorityLabel(ticket.priority)
+              const nameOnChip = ticket.status === "asignado" && Boolean(ticket.assignee)
               return (
                 <tr key={ticket.id}>
                   <td>
@@ -262,11 +299,9 @@ export function TicketList() {
                     </Link>
                   </td>
                   <td>{ticket.location}</td>
-                  <td>
-                    <StatusBadge status={statusLabel(ticket.status)} />
-                  </td>
+                  <td>{statusChip(ticket)}</td>
                   <td>{priority ? <PriorityBadge priority={priority} /> : "Sin prioridad"}</td>
-                  <td>{ticket.assignee ?? "Sin asignar"}</td>
+                  <td>{nameOnChip ? "—" : (ticket.assignee ?? "Sin asignar")}</td>
                   <td>{formatWhen(ticket.createdAt)}</td>
                 </tr>
               )
@@ -291,17 +326,19 @@ function mailKind(kind: string): string {
 
 function TicketBody({ ticket }: { ticket: TicketRow }) {
   const priority = priorityLabel(ticket.priority)
+  const nameOnChip = ticket.status === "asignado" && Boolean(ticket.assignee)
+  const meta = [ticket.location]
+  if (!nameOnChip) meta.push(ticket.assignee ?? "Sin asignar")
+  meta.push(formatWhen(ticket.createdAt))
   return (
     <>
       <div className={styles.badges}>
         <span className={styles.code}>{ticket.code}</span>
-        <StatusBadge status={statusLabel(ticket.status)} />
+        {statusChip(ticket)}
         {priority ? <PriorityBadge priority={priority} showLabel /> : <span className={styles.muted}>Sin prioridad</span>}
       </div>
       <p className={styles.clamp}>{ticket.description}</p>
-      <p className={styles.muted}>
-        {ticket.location} · {ticket.assignee ?? "Sin asignar"} · {formatWhen(ticket.createdAt)}
-      </p>
+      <p className={styles.muted}>{meta.join(" · ")}</p>
       <p className={styles.nameLink}>{ticket.requesterName}</p>
     </>
   )

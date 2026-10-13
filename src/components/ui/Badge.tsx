@@ -26,7 +26,7 @@ const statusKey = (s: Status) =>
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "-");
 
-export function StatusBadge({ status }: { status: Status }) {
+export function StatusBadge({ status, label }: { status: Status; label?: string }) {
   const key = statusKey(status);
   return (
     <span
@@ -36,7 +36,7 @@ export function StatusBadge({ status }: { status: Status }) {
         color: `var(--status-${key}-fg)`,
       }}
     >
-      {status}
+      {label ?? status}
     </span>
   );
 }

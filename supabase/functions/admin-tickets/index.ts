@@ -11,5 +11,6 @@ serveAdmin(async (staff, body) => {
     p_from: null,
     p_to: null,
     p_query: text(body.query) || null,
+    p_tab: text(body.tab) || "abiertas",
   })
 })

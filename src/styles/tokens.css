@@ -73,8 +73,8 @@
   /* ---- Estados de incidencia (fondo / texto) ---------------------------- */
   --status-nuevo-bg: var(--mf-info-100);
   --status-nuevo-fg: var(--mf-info-700);
-  --status-asignado-bg: var(--mf-navy-100);
-  --status-asignado-fg: var(--mf-navy-700);
+  --status-asignado-bg: #5b2a9a;
+  --status-asignado-fg: var(--mf-white);
   --status-en-curso-bg: var(--mf-gold-100);
   --status-en-curso-fg: var(--mf-warning-700);
   --status-en-espera-bg: #f1e9fb;
