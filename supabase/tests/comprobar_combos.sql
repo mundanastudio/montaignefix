@@ -24,11 +24,11 @@ begin
     raise exception 'FALLO: debían existir 4 combos, hay %', v_n;
   end if;
 
-  if jsonb_array_length(montaigne_fix.team_technician_options()) <> 3 then
-    raise exception 'FALLO: Equipo no debe ver los combos en el desplegable';
-  end if;
   if jsonb_array_length(montaigne_fix.technician_options()) <> 7 then
     raise exception 'FALLO: Gestión debía ver 3 personas y 4 equipos';
+  end if;
+  if jsonb_array_length(montaigne_fix.team_technician_options()) <> 3 then
+    raise exception 'FALLO: el PIN no debe listar los combos';
   end if;
 
   insert into montaigne_fix.tickets (code, requester_name, requester_email, description, location)
@@ -59,19 +59,17 @@ begin
     if sqlerrm not like '%Solo puedes modificar%' then raise; end if;
   end;
 
-  begin
-    perform montaigne_fix.staff_assign(v_andres, v_ticket, 'soltar', null);
-    raise exception 'FALLO: Andrés se quitó un combo de Gestión';
-  exception when others then
-    if sqlerrm not like '%que sea tuya%' then raise; end if;
-  end;
+  perform montaigne_fix.staff_assign(v_andres, v_ticket, 'reasignar', v_combo);
 
-  begin
-    perform montaigne_fix.staff_assign(v_andres, v_ticket, 'reasignar', v_combo);
-    raise exception 'FALLO: Equipo asignó un combo';
-  exception when others then
-    if sqlerrm not like '%que sea tuya%' and sqlerrm not like '%Fran, Agustín o Andrés%' then raise; end if;
-  end;
+  insert into montaigne_fix.tickets (code, requester_name, requester_email, description, location)
+  values ('MF-CMB-2', 'Luis', 'luis@ejemplo.com', 'Cerrada de prueba', 'Aula 2');
+  perform montaigne_fix.admin_set_status(v_fran, (select id from montaigne_fix.tickets where code = 'MF-CMB-2'), 'cerrado', null);
+  perform montaigne_fix.admin_set_status(v_fran, v_ticket, 'resuelto', null);
+
+  v_json := montaigne_fix.staff_list_tickets(v_andres, 'todas');
+  if v_json->'tickets' @> '[{"code":"MF-CMB-1"}]' or v_json->'tickets' @> '[{"code":"MF-CMB-2"}]' then
+    raise exception 'FALLO: Todas no debía mostrar resueltas ni cerradas';
+  end if;
 
   raise exception 'COMBOS_OK';
 end $$;

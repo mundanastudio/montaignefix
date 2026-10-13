@@ -16,6 +16,7 @@ import styles from "./Team.module.css"
 interface Technician {
   id: string
   name: string
+  combo?: boolean
 }
 
 interface Note {
@@ -193,23 +194,27 @@ export function TeamTicket() {
   const terminal = TERMINAL.has(ticket.status)
   const internas = notes.filter((item) => item.kind === "interna")
   const gestion = notes.filter((item) => item.kind === "gestion")
-  const onlyMine = ticket.assigneeId === actorId
-  const others = technicians.filter((item) => item.id !== actorId)
-  const colleagueName = others.find((item) => item.id === colleague)?.name
+  const choices = technicians.filter((item) => item.id !== ticket.assigneeId)
+  const people = choices.filter((item) => !item.combo)
+  const teams = choices.filter((item) => item.combo)
+  const colleagueName = choices.find((item) => item.id === colleague)?.name
 
   return (
     <div className={styles.stack}>
       <header>
         <div className={styles.badges}>
           <h2>{ticket.code}</h2>
-          <StatusBadge status={statusLabel(ticket.status)} />
+          {ticket.status === "asignado" && ticket.assignee ? (
+            <StatusBadge status={statusLabel(ticket.status)} label={ticket.assignee} />
+          ) : (
+            <StatusBadge status={statusLabel(ticket.status)} />
+          )}
+          {ticket.status !== "asignado" && ticket.assignee ? <StatusBadge status="Asignado" label={ticket.assignee} /> : null}
           <span className={styles.beside}>
             {priority ? <PriorityBadge priority={priority} showLabel /> : null}
             <span className={styles.opened}>
               Abierta {formatWhen(ticket.createdAt)}
               {ticket.resolvedAt ? ` · Resuelta ${formatWhen(ticket.resolvedAt)}` : ""}
-              {" · "}
-              {ticket.assignee ?? "Sin asignar"}
             </span>
           </span>
         </div>
@@ -335,27 +340,38 @@ export function TeamTicket() {
         </section>
       )}
 
-      {onlyMine && (
+      {!terminal && (ticket.mine || !ticket.assigneeId) && (
         <section className={styles.block}>
           <h3>Asignación</h3>
-          <div className={styles.actions}>
-            <Button variant="secondary" disabled={busy} onClick={() => setDialog("soltar")}>
-              Quitarme esta tarea
-            </Button>
-          </div>
+          {ticket.mine && (
+            <div className={styles.actions}>
+              <Button variant="secondary" disabled={busy} onClick={() => setDialog("soltar")}>
+                Quitarme esta tarea
+              </Button>
+            </div>
+          )}
           <label className={styles.stack}>
-            Pasarla a un compañero
+            {ticket.assigneeId ? "Pasarla a un compañero o equipo" : "Asignar a un compañero o equipo"}
             <select className={styles.control} value={colleague} disabled={busy} onChange={(event) => setColleague(event.target.value)}>
               <option value="">Elige</option>
-              {others.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
+              <optgroup label="Persona">
+                {people.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Equipo">
+                {teams.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </label>
           <Button variant="secondary" disabled={busy || colleague === ""} onClick={() => setDialog("reasignar")}>
-            Pasarla
+            {ticket.assigneeId ? "Pasarla" : "Asignar"}
           </Button>
         </section>
       )}
@@ -427,14 +443,20 @@ export function TeamTicket() {
       </Confirm>
       <Confirm
         open={dialog === "reasignar"}
-        title="Pasar la tarea"
-        acceptLabel="Pasarla"
+        title={ticket.assigneeId ? "Pasar la tarea" : "Asignar la tarea"}
+        acceptLabel={ticket.assigneeId ? "Pasarla" : "Asignar"}
         busy={busy}
         onCancel={() => setDialog(null)}
-        onAccept={() => void run("staff-assign", { mode: "reasignar", staffId: colleague }, `Pasada a ${colleagueName ?? "tu compañero"}.`)}
+        onAccept={() =>
+          void run(
+            "staff-assign",
+            { mode: "reasignar", staffId: colleague },
+            `${ticket.assigneeId ? "Pasada" : "Asignada"} a ${colleagueName ?? "tu compañero"}.`,
+          )
+        }
       >
         <p>
-          Vas a pasar {ticket.code} a {colleagueName}.
+          Vas a {ticket.assigneeId ? "pasar" : "asignar"} {ticket.code} a {colleagueName}.
         </p>
       </Confirm>
     </div>

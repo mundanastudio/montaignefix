@@ -108,17 +108,25 @@ export function TeamList() {
             </>
           )}
           {tab === "sin" && "No hay incidencias sin asignar."}
-          {tab === "todas" && "Todavía no hay incidencias."}
+          {tab === "todas" && "No hay incidencias abiertas."}
         </Alert>
       )}
       <div className={styles.cards}>
         {tickets.map((ticket) => {
           const priority = priorityLabel(ticket.priority)
+          const status = statusLabel(ticket.status)
           return (
             <Link key={ticket.id} className={styles.card} to={{ pathname: `/equipo/${ticket.code}`, search: params.toString() }}>
               <div className={styles.badges}>
                 <span className={styles.code}>{ticket.code}</span>
-                <StatusBadge status={statusLabel(ticket.status)} />
+                {ticket.status === "asignado" && ticket.assignee ? (
+                  <StatusBadge status={status} label={ticket.assignee} />
+                ) : (
+                  <StatusBadge status={status} />
+                )}
+                {ticket.status !== "asignado" && ticket.assignee ? (
+                  <StatusBadge status="Asignado" label={ticket.assignee} />
+                ) : null}
                 {priority ? <PriorityBadge priority={priority} /> : <span className={styles.muted}>Sin prioridad</span>}
                 <span className={styles.noteWhen}>{formatWhen(ticket.createdAt)}</span>
               </div>
@@ -133,10 +141,6 @@ export function TeamList() {
               <p className={styles.taskLine}>
                 <strong>Lugar: </strong>
                 {ticket.location}
-              </p>
-              <p className={styles.taskLine}>
-                <strong>Persona asignada: </strong>
-                {ticket.assignee ?? "Sin asignar"}
               </p>
               <p className={styles.taskLine}>
                 <strong>Materiales: </strong>
