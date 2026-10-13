@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useState } from "react"
 import { Link, useOutletContext, useSearchParams } from "react-router-dom"
 import { PriorityBadge, StatusBadge } from "../../components/ui/Badge"
 import { Alert } from "../../components/ui/Alert"
@@ -72,16 +72,12 @@ export function TicketList() {
   const tab = currentView(params.get("vista"))
   const priority = params.get("prioridad") ?? ""
   const assigned = params.get("asignado") ?? ""
-  const query = params.get("q") ?? ""
-  const [draft, setDraft] = useState(query)
   const [counts, setCounts] = useState<Counts | null>(null)
   const [technicians, setTechnicians] = useState<Technician[]>([])
   const [tickets, setTickets] = useState<TicketRow[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [emails, setEmails] = useState<EmailRow[]>([])
-
-  useEffect(() => setDraft(query), [query])
 
   useEffect(() => {
     if (!SHOW_CORREOS) return
@@ -102,7 +98,6 @@ export function TicketList() {
       tab,
       priority,
       assigned,
-      query,
     }).then((result) => {
       if (!active) return
       setLoading(false)
@@ -118,24 +113,21 @@ export function TicketList() {
     return () => {
       active = false
     }
-  }, [call, tab, priority, assigned, query])
+  }, [call, tab, priority, assigned])
 
   function setFilter(key: string, value: string) {
     const next = new URLSearchParams(params)
     if (value) next.set(key, value)
     else next.delete(key)
     next.delete("estado")
+    next.delete("q")
     setParams(next)
-  }
-
-  function search(event: FormEvent) {
-    event.preventDefault()
-    setFilter("q", draft.trim())
   }
 
   function tabHref(view: View) {
     const next = new URLSearchParams(params)
     next.delete("estado")
+    next.delete("q")
     if (view === "abiertas") next.delete("vista")
     else next.set("vista", view)
     const search = next.toString()
@@ -148,7 +140,7 @@ export function TicketList() {
     setParams(next)
   }
 
-  const filtered = Boolean(priority || assigned || query)
+  const filtered = Boolean(priority || assigned)
   const tabCount = (view: View) => {
     if (!counts) return ""
     const n = view === "abiertas" ? counts.abiertas : view === "resueltas" ? counts.resueltas : counts.cerradas
@@ -188,7 +180,7 @@ export function TicketList() {
         ))}
       </nav>
 
-      <form className={styles.filters} onSubmit={search}>
+      <div className={styles.filters}>
         <label className={styles.filter}>
           Prioridad
           <select className={styles.control} value={priority} onChange={(event) => setFilter("prioridad", event.target.value)}>
@@ -211,25 +203,14 @@ export function TicketList() {
             ))}
           </select>
         </label>
-        <div className={styles.search}>
-          <label className={styles.filter}>
-            Buscar
-            <input
-              className={styles.control}
-              type="search"
-              value={draft}
-              placeholder="Código, reparación, lugar o nombre"
-              onChange={(event) => setDraft(event.target.value)}
-            />
-          </label>
-          <Button type="submit">Buscar</Button>
-          {filtered && (
+        {filtered && (
+          <div className={styles.filterActions}>
             <Button type="button" variant="ghost" onClick={clearFilters}>
               Limpiar
             </Button>
-          )}
-        </div>
-      </form>
+          </div>
+        )}
+      </div>
 
       <p className={styles.hint}>
         {tab === "abiertas"
