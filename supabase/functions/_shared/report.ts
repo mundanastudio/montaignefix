@@ -314,8 +314,8 @@ async function weeklyPackage(start: Date, end: Date) {
       ["Material pendiente", String(shopping.length)],
     ],
     tables: [
-      { title: "Resueltas y cerradas esta semana", headers, rows: doneRows, widths: [58, 120, 70, 52, 58, 70, 87] },
-      { title: "Siguen abiertas", headers, rows: openRows, widths: [58, 140, 78, 62, 62, 70, 45] },
+      { title: "Resueltas y cerradas esta semana", headers, rows: doneRows, widths: [58, 96, 64, 50, 58, 102, 87] },
+      { title: "Siguen abiertas", headers, rows: openRows, widths: [58, 116, 72, 58, 62, 102, 47] },
       { title: "Pendiente de comprar", headers: ["Artículo", "Incidencia", "Quién lo pidió", "Desde"], rows: shopping, widths: [160, 160, 110, 85] },
     ],
     tickets: await fichas([...done, ...open], staff),
@@ -361,8 +361,8 @@ async function annualPackage(start: Date, end: Date) {
       ["Duplicadas", String(aside.filter((row) => row.status === "duplicado").length)],
     ],
     tables: [
-      { title: "Resueltas y cerradas", headers, rows: mainRows, widths: [58, 130, 78, 52, 58, 70, 69] },
-      { title: "Rechazadas y duplicadas", headers, rows: asideRows, widths: [58, 130, 78, 52, 58, 70, 69] },
+      { title: "Resueltas y cerradas", headers, rows: mainRows, widths: [58, 106, 72, 50, 56, 102, 71] },
+      { title: "Rechazadas y duplicadas", headers, rows: asideRows, widths: [58, 106, 72, 50, 56, 102, 71] },
     ],
     tickets: await fichas([...main, ...aside], staff),
     closing: "Montaigne Fix · Colegio Montaigne de Sevilla · powered by Mundana Studio",
