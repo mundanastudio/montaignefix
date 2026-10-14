@@ -374,19 +374,28 @@ export function TicketDetail() {
       <section className={styles.block}>
         <h3>Prioridad</h3>
         <div className={styles.actions}>
-          {([["p1", "P1"], ["p2", "P2"], ["p3", "P3"]] as const).map(([value, label]) => (
-            <Button
-              key={value}
-              variant={ticket.priority === value ? "primary" : "secondary"}
-              aria-pressed={ticket.priority === value}
-              disabled={busy || ticket.priority === value}
-              onClick={() => void run("admin-set-priority", { priority: value }, `Prioridad ${label}.`)}
-            >
-              {label}
-            </Button>
-          ))}
+          {([["p1", "P1"], ["p2", "P2"], ["p3", "P3"]] as const).map(([value, label]) => {
+            const on = ticket.priority === value
+            return (
+              <Button
+                key={value}
+                variant={on ? "primary" : "secondary"}
+                aria-pressed={on}
+                disabled={busy}
+                onClick={() =>
+                  void run(
+                    "admin-set-priority",
+                    { priority: on ? "" : value },
+                    on ? "Sin prioridad." : `Prioridad ${label}.`,
+                  )
+                }
+              >
+                {label}
+              </Button>
+            )
+          })}
         </div>
-        <p className={styles.hint}>P1 hoy, si es urgente o de seguridad. P2 esta semana. P3 cuando se pueda.</p>
+        <p className={styles.hint}>P1 hoy, si es urgente o de seguridad. P2 esta semana. P3 cuando se pueda. Vuelve a pulsar la marcada para quitarla.</p>
       </section>
 
       <section className={styles.block}>

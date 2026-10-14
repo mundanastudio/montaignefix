@@ -165,6 +165,11 @@ begin
     raise exception 'FALLO: la prioridad no quedó a nombre de Fran';
   end if;
 
+  perform montaigne_fix.admin_set_priority(v_fran, v_a, null);
+  if exists (select 1 from montaigne_fix.tickets where id = v_a and priority is not null) then
+    raise exception 'FALLO: debía poder quitarse la prioridad';
+  end if;
+
   delete from montaigne_fix.tickets where id = v_a;
   if exists (select 1 from montaigne_fix.shopping_items where ticket_id = v_a) then
     raise exception 'FALLO: al borrar el parte no se fueron sus materiales';
