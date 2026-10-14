@@ -7,9 +7,11 @@ import {
   EMAIL_DOMAIN_MESSAGE,
   EMAIL_LIMIT_MESSAGE,
   isAllowedRequesterEmail,
+  isRaisedRequesterEmail,
   isUnlimitedRequesterEmail,
   normalizeEmail,
   requesterEmailFieldError,
+  requesterEmailTicketLimit,
 } from "../supabase/functions/_shared/allowedEmails.ts"
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..")
@@ -34,6 +36,11 @@ describe("isAllowedRequesterEmail", () => {
     "  AndresCanoRodriguez@Gmail.com ",
     "agumasero@gmail.com",
     "  AguMasero@Gmail.com ",
+    "patriciacastilloorozco33@gmail.com",
+    "Susanacrespomarquez@gmail.com",
+    "Remelucia78@gmail.com",
+    "16.11.96.maria@gmail.com",
+    "Scmary97@gmail.com",
   ]
   for (const email of allowed) {
     it(`acepta ${JSON.stringify(email)}`, () => {
@@ -66,6 +73,19 @@ describe("isUnlimitedRequesterEmail", () => {
     assert.equal(isUnlimitedRequesterEmail("curromena89@gmail.com"), false)
     assert.equal(isUnlimitedRequesterEmail("otro@gmail.com"), false)
     assert.equal(isUnlimitedRequesterEmail("profe@grupomontaigne.com"), false)
+    assert.equal(isUnlimitedRequesterEmail("scmary97@gmail.com"), false)
+  })
+})
+
+describe("isRaisedRequesterEmail", () => {
+  it("esos cinco Gmail tienen tope 10, no ilimitado", () => {
+    assert.equal(isRaisedRequesterEmail("  ScMary97@Gmail.com "), true)
+    assert.equal(isRaisedRequesterEmail("16.11.96.maria@gmail.com"), true)
+    assert.equal(requesterEmailTicketLimit("patriciacastilloorozco33@gmail.com"), 10)
+    assert.equal(requesterEmailTicketLimit("andrescanorodriguez@gmail.com"), null)
+    assert.equal(requesterEmailTicketLimit("profe@grupomontaigne.com"), 3)
+    assert.equal(isRaisedRequesterEmail("andrescanorodriguez@gmail.com"), false)
+    assert.equal(isRaisedRequesterEmail("otro@gmail.com"), false)
   })
 })
 
@@ -80,6 +100,8 @@ describe("mensajes", () => {
     assert.match(src, /EMAIL_LIMIT_MESSAGE/)
     assert.match(src, /requesterEmailFieldError/)
     assert.match(src, /isUnlimitedRequesterEmail/)
+    assert.match(src, /isRaisedRequesterEmail/)
+    assert.match(src, /requesterEmailTicketLimit/)
     assert.equal(EMAIL_LIMIT_MESSAGE, "Debes esperar 24h para poder abrir un parte nuevo")
     assert.doesNotMatch(src, /Con este email ya hay/)
     assert.doesNotMatch(src, /Podrás abrir otro el/)

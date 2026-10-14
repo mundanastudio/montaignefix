@@ -8,7 +8,7 @@ La web es un sitio estático (React, Vite, TypeScript). La base de datos, las fo
 
 | Quién | Dónde | Qué hace |
 |---|---|---|
-| Profesor | `/` | Abre el parte. Sin contraseña. Como máximo 3 partes cada 24 horas con el mismo email, 10 por hora y 30 por día desde la misma red. Si en un día se pasan de 100, se paran los envíos nuevos. Fran, Curro, `andrescanorodriguez@gmail.com` y `agumasero@gmail.com` no tienen ese tope. Solo esos Gmail (y el de Curro) entran fuera del dominio corporativo; el resto de Gmail no. |
+| Profesor | `/` | Abre el parte. Sin contraseña. Como máximo 3 partes cada 24 horas con el mismo email, 10 por hora y 30 por día desde la misma red. Si en un día se pasan de 100, se paran los envíos nuevos. Fran, Curro, `andrescanorodriguez@gmail.com` y `agumasero@gmail.com` no tienen ese tope. `patriciacastilloorozco33@gmail.com`, `susanacrespomarquez@gmail.com`, `remelucia78@gmail.com`, `16.11.96.maria@gmail.com` y `scmary97@gmail.com` pueden abrir 10 cada 24 h y no cuentan para el tope de red. Solo esos Gmail (y el de Curro) entran fuera del dominio corporativo; el resto de Gmail no. |
 | Fran y Curro | `/gestion` | Tres pestañas: Abiertas, Resueltas y Cerradas. Asignan, priorizan, compran materiales, cierran, reabren, rechazan o marcan duplicado. Cada uno entra con su contraseña. |
 | Fran, Agustín y Andrés | `/equipo` | PIN compartido (4 cifras; se puede pasar a 6), el mismo para los tres, y luego eligen su nombre. Trabajan solo las tareas que tienen asignadas. |
 

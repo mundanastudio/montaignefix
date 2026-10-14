@@ -3,16 +3,17 @@
 import { createClient } from "npm:@supabase/supabase-js@2"
 import {
   EMAIL_LIMIT_MESSAGE,
+  isRaisedRequesterEmail,
   isUnlimitedRequesterEmail,
   normalizeEmail,
   requesterEmailFieldError,
+  requesterEmailTicketLimit,
 } from "../_shared/allowedEmails.ts"
 import { notifyNew, sendNotice } from "../_shared/email.ts"
 import { clientIp } from "../_shared/http.ts"
 import { MAX_FORM_PHOTOS, MAX_PHOTO_BYTES, removeStorage, uploadTicketPhotos } from "../_shared/photos.ts"
 
 const LIMITS = { name: 120, email: 254, description: 2000, location: 200, notes: 2000 }
-const RATE_LIMIT = 3
 const HOUR_LIMIT = 10
 const DAY_IP_LIMIT = 30
 const DAY_GLOBAL_LIMIT = 100
@@ -108,11 +109,12 @@ Deno.serve(async (req) => {
     console.error("staff", managerError.code)
     return json(500, { ok: false, message: "No se ha podido enviar el parte. Inténtalo de nuevo más tarde." })
   }
-  const exempt =
+  const unlimited =
     isUnlimitedRequesterEmail(email) ||
     (managers ?? []).some((row) => typeof row.email === "string" && row.email.toLowerCase() === email)
+  const skipNetwork = unlimited || isRaisedRequesterEmail(email)
 
-  if (!exempt) {
+  if (!unlimited) {
     const since = new Date(Date.now() - WINDOW_MS).toISOString()
     const { data: recent, error: recentError } = await db
       .from("tickets")
@@ -124,10 +126,13 @@ Deno.serve(async (req) => {
       console.error("rate", recentError.code)
       return json(500, { ok: false, message: "No se ha podido enviar el parte. Inténtalo de nuevo más tarde." })
     }
-    if ((recent?.length ?? 0) >= RATE_LIMIT) {
+    const cap = requesterEmailTicketLimit(email) ?? 3
+    if ((recent?.length ?? 0) >= cap) {
       return json(429, { ok: false, message: EMAIL_LIMIT_MESSAGE })
     }
+  }
 
+  if (!skipNetwork) {
     const ip = clientIp(req)
     const dayAgo = new Date(Date.now() - WINDOW_MS).toISOString()
     const hourAgo = new Date(Date.now() - HOUR_MS).toISOString()
@@ -206,7 +211,7 @@ Deno.serve(async (req) => {
     createdAt: typeof created?.created_at === "string" ? created.created_at : new Date().toISOString(),
     photos: images,
   })
-  if (!exempt) {
+  if (!skipNetwork) {
     await db.from("submission_ips").insert({ ip: clientIp(req) })
   }
   const cutoff = new Date(Date.now() - 2 * WINDOW_MS).toISOString()
