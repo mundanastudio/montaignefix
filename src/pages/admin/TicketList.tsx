@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useOutletContext, useSearchParams } from "react-router-dom"
 import { PriorityBadge } from "../../components/ui/Badge"
 import { TicketStatusChips } from "../../components/TicketStatusChips"
+import { TicketListFields } from "../../components/TicketListFields"
 import { Alert } from "../../components/ui/Alert"
 import { Button } from "../../components/ui/Button"
 import { Spinner } from "../../components/ui/Spinner"
@@ -33,16 +34,23 @@ interface EmailRow {
   createdAt: string
 }
 
+interface MaterialRow {
+  description: string
+  status: "pendiente" | "comprado"
+}
+
 interface TicketRow {
   id: string
   code: string
   requesterName: string
   description: string
+  notes: string | null
   location: string
   status: string
   priority: string | null
   assignee: string | null
   createdAt: string
+  materials: MaterialRow[]
 }
 
 const SHOW_CORREOS = false
@@ -313,19 +321,20 @@ function mailKind(kind: string): string {
 
 function TicketBody({ ticket }: { ticket: TicketRow }) {
   const priority = priorityLabel(ticket.priority)
-  const meta = [ticket.location]
-  if (!ticket.assignee) meta.push("Sin asignar")
-  meta.push(formatWhen(ticket.createdAt))
   return (
     <>
       <div className={styles.badges}>
         <span className={styles.code}>{ticket.code}</span>
         {statusChip(ticket)}
         {priority ? <PriorityBadge priority={priority} showLabel /> : <span className={styles.muted}>Sin prioridad</span>}
+        <span className={styles.noteWhen}>{formatWhen(ticket.createdAt)}</span>
       </div>
-      <p className={styles.clamp}>{ticket.description}</p>
-      <p className={styles.muted}>{meta.join(" · ")}</p>
-      <p className={styles.nameLink}>{ticket.requesterName}</p>
+      <TicketListFields
+        description={ticket.description}
+        notes={ticket.notes}
+        location={ticket.location}
+        materials={ticket.materials}
+      />
     </>
   )
 }

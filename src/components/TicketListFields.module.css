@@ -1,0 +1,19 @@
+.line {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pending,
+.bought {
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+}
+
+.pending {
+  color: var(--mf-warning-700);
+}
+
+.bought {
+  color: var(--color-success);
+}

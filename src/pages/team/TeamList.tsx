@@ -3,6 +3,7 @@ import { Link, useOutletContext, useSearchParams } from "react-router-dom"
 import { Alert } from "../../components/ui/Alert"
 import { PriorityBadge } from "../../components/ui/Badge"
 import { TicketStatusChips } from "../../components/TicketStatusChips"
+import { TicketListFields } from "../../components/TicketListFields"
 import { Spinner } from "../../components/ui/Spinner"
 import { formatWhen, priorityLabel } from "../../domain/labels"
 import type { TeamContextValue } from "./TeamShell"
@@ -126,31 +127,12 @@ export function TeamList() {
                 {priority ? <PriorityBadge priority={priority} /> : <span className={styles.muted}>Sin prioridad</span>}
                 <span className={styles.noteWhen}>{formatWhen(ticket.createdAt)}</span>
               </div>
-              <p className={styles.taskLine}>
-                <strong>Reparación necesaria: </strong>
-                {ticket.description}
-              </p>
-              <p className={styles.taskLine}>
-                <strong>Observaciones: </strong>
-                {ticket.notes?.trim() || "Sin observaciones"}
-              </p>
-              <p className={styles.taskLine}>
-                <strong>Lugar: </strong>
-                {ticket.location}
-              </p>
-              <p className={styles.taskLine}>
-                <strong>Materiales: </strong>
-                {(ticket.materials ?? []).length === 0 && "Sin materiales"}
-                {(ticket.materials ?? []).map((item, index) => (
-                  <span key={`${item.description}-${index}`}>
-                    {index > 0 && " / "}
-                    {item.description}{" "}
-                    <span className={item.status === "pendiente" ? styles.statePending : styles.stateBought}>
-                      {item.status === "pendiente" ? "Pendiente" : "Comprado"}
-                    </span>
-                  </span>
-                ))}
-              </p>
+              <TicketListFields
+                description={ticket.description}
+                notes={ticket.notes}
+                location={ticket.location}
+                materials={ticket.materials}
+              />
             </Link>
           )
         })}
