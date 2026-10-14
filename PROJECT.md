@@ -51,7 +51,7 @@ El solicitante **no ve el estado** de su parte: solo recibe el email final.
 - Sección **"Lista de la compra"** (ver 3.4), con un contador de artículos pendientes visible en la navegación del panel.
 
 ### 3.3 Panel del equipo — `/equipo`
-- Pestañas: **"Mis tareas"**, **"Sin asignar"**, **"Todas"**. **Todas** solo partes abiertos (no Resuelto, Cerrado, Rechazado ni Duplicado). Los **duplicados no salen** en ninguna pestaña ni en los contadores. En las tarjetas, chip morado con la persona o el equipo asignado. La ficha por URL sigue abierta, solo lectura si no es suya.
+- Pestañas: **"Mis tareas"**, **"Sin asignar"**, **"Todas"**. **Mis tareas** no incluye Cerrado (pasa a Todas). **Todas** son partes abiertos y cerrados (no Resuelto, Rechazado ni Duplicado); las cerradas van al final. Los **duplicados no salen** en ninguna pestaña ni en los contadores. En las tarjetas, chip morado con la persona o el equipo asignado. La ficha por URL sigue abierta, solo lectura si no es suya.
 - Ven todas las incidencias (salvo duplicados en el listado); **solo pueden modificar las que tienen asignadas**, y solo:
   - el estado (En curso, En espera, Resuelto),
   - sus **observaciones internas**.

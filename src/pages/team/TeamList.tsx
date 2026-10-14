@@ -90,7 +90,10 @@ export function TeamList() {
           </Link>
         ))}
       </nav>
-      <p className={styles.hint}>Por prioridad y, dentro de cada una, de la más antigua a la más nueva.</p>
+      <p className={styles.hint}>
+        Por prioridad y, dentro de cada una, de la más antigua a la más nueva.
+        {tab === "todas" ? " Las cerradas van al final." : ""}
+      </p>
       {error && <Alert tone="error">{error}</Alert>}
       {loading && (
         <p className={styles.muted}>
@@ -108,7 +111,7 @@ export function TeamList() {
             </>
           )}
           {tab === "sin" && "No hay incidencias sin asignar."}
-          {tab === "todas" && "No hay incidencias abiertas."}
+          {tab === "todas" && "No hay incidencias abiertas ni cerradas."}
         </Alert>
       )}
       <div className={styles.cards}>

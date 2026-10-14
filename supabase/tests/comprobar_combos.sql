@@ -8,6 +8,8 @@ declare
   v_combo uuid;
   v_ticket uuid;
   v_json jsonb;
+  v_item jsonb;
+  v_seen_closed boolean;
   v_n int;
 begin
   select id into v_fran from montaigne_fix.staff where slug = 'fran';
@@ -63,13 +65,35 @@ begin
 
   insert into montaigne_fix.tickets (code, requester_name, requester_email, description, location)
   values ('MF-CMB-2', 'Luis', 'luis@ejemplo.com', 'Cerrada de prueba', 'Aula 2');
+  perform montaigne_fix.admin_assign(v_fran, (select id from montaigne_fix.tickets where code = 'MF-CMB-2'), v_andres);
   perform montaigne_fix.admin_set_status(v_fran, (select id from montaigne_fix.tickets where code = 'MF-CMB-2'), 'cerrado', null);
   perform montaigne_fix.admin_set_status(v_fran, v_ticket, 'resuelto', null);
 
   v_json := montaigne_fix.staff_list_tickets(v_andres, 'todas');
-  if v_json->'tickets' @> '[{"code":"MF-CMB-1"}]' or v_json->'tickets' @> '[{"code":"MF-CMB-2"}]' then
-    raise exception 'FALLO: Todas no debía mostrar resueltas ni cerradas';
+  if v_json->'tickets' @> '[{"code":"MF-CMB-1"}]' then
+    raise exception 'FALLO: Todas no debía mostrar resueltas';
   end if;
+  if not (v_json->'tickets' @> '[{"code":"MF-CMB-2"}]') then
+    raise exception 'FALLO: Todas debía mostrar las cerradas';
+  end if;
+  v_json := montaigne_fix.staff_list_tickets(v_andres, 'mias');
+  if v_json->'tickets' @> '[{"code":"MF-CMB-2"}]' then
+    raise exception 'FALLO: Mis tareas no debía mostrar cerradas';
+  end if;
+  if not (v_json->'tickets' @> '[{"code":"MF-CMB-1"}]') then
+    raise exception 'FALLO: Mis tareas debía seguir mostrando la resuelta';
+  end if;
+
+  v_json := montaigne_fix.staff_list_tickets(v_andres, 'todas');
+  v_seen_closed := false;
+  for v_item in select jsonb_array_elements(v_json->'tickets')
+  loop
+    if v_item->>'status' = 'cerrado' then
+      v_seen_closed := true;
+    elsif v_seen_closed then
+      raise exception 'FALLO: una abierta iba detrás de una cerrada en Todas';
+    end if;
+  end loop;
 
   raise exception 'COMBOS_OK';
 end $$;
