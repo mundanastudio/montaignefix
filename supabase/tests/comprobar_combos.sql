@@ -74,7 +74,11 @@ begin
     raise exception 'FALLO: Todas no debía mostrar resueltas';
   end if;
   if not (v_json->'tickets' @> '[{"code":"MF-CMB-2"}]') then
-    raise exception 'FALLO: Todas debía mostrar las cerradas';
+    raise exception 'FALLO: Andrés debía ver su cerrada en Todas';
+  end if;
+  v_json := montaigne_fix.staff_list_tickets(v_agustin, 'todas');
+  if v_json->'tickets' @> '[{"code":"MF-CMB-2"}]' then
+    raise exception 'FALLO: Agustín no debía ver la cerrada de Andrés';
   end if;
   v_json := montaigne_fix.staff_list_tickets(v_andres, 'mias');
   if v_json->'tickets' @> '[{"code":"MF-CMB-2"}]' then

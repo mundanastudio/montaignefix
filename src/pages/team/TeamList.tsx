@@ -92,7 +92,7 @@ export function TeamList() {
       </nav>
       <p className={styles.hint}>
         Por prioridad y, dentro de cada una, de la más antigua a la más nueva.
-        {tab === "todas" ? " Las cerradas van al final." : ""}
+        {tab === "todas" ? " Tus cerradas van al final." : ""}
       </p>
       {error && <Alert tone="error">{error}</Alert>}
       {loading && (
