@@ -33,6 +33,12 @@ begin
   end if;
 
   perform montaigne_fix.staff_set_status(v_agustin, v_ticket, 'en_curso');
+  perform montaigne_fix.staff_set_status(v_agustin, v_ticket, 'en_curso');
+  select status into v_status from montaigne_fix.tickets where id = v_ticket;
+  if v_status <> 'asignado' then
+    raise exception 'FALLO: repetir En curso debía volver a asignado, está %', v_status;
+  end if;
+  perform montaigne_fix.staff_set_status(v_agustin, v_ticket, 'en_curso');
   perform montaigne_fix.staff_add_note(v_agustin, v_ticket, 'Falta la manivela');
   perform montaigne_fix.staff_add_materials(v_agustin, v_ticket, array['', '  ', 'cinta de persiana']);
 

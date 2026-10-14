@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from "react"
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router-dom"
 import { Alert } from "../../components/ui/Alert"
-import { PriorityBadge, StatusBadge } from "../../components/ui/Badge"
+import { PriorityBadge } from "../../components/ui/Badge"
+import { TicketStatusChips } from "../../components/TicketStatusChips"
 import { Button } from "../../components/ui/Button"
 import { Textarea } from "../../components/ui/Field"
 import { Spinner } from "../../components/ui/Spinner"
-import { eventLine, formatWhen, priorityLabel, statusLabel } from "../../domain/labels"
+import { eventLine, formatWhen, priorityLabel } from "../../domain/labels"
 import { REASON_MAX, REJECT_PRESETS, reasonReady, trimmedReason } from "../../domain/rejectReason"
 import type { AdminContextValue } from "./AdminShell"
 import { Materials } from "../../components/Materials"
@@ -267,7 +268,7 @@ export function TicketDetail() {
       <header>
         <div className={styles.badges}>
           <h2>{ticket.code}</h2>
-          <StatusBadge status={statusLabel(ticket.status)} />
+          <TicketStatusChips status={ticket.status} assignee={ticket.assignee} />
           {priority ? <PriorityBadge priority={priority} showLabel /> : <span className={styles.muted}>Sin prioridad</span>}
         </div>
       </header>
@@ -402,17 +403,26 @@ export function TicketDetail() {
         <h3>Estado</h3>
         <div className={styles.actions}>
           {!terminal &&
-            FLOW.map(([value, label]) => (
-              <Button
-                key={value}
-                variant={ticket.status === value ? "primary" : "secondary"}
-                aria-pressed={ticket.status === value}
-                disabled={busy || ticket.status === value}
-                onClick={() => void run("admin-set-status", { status: value }, `Estado: ${label}.`)}
-              >
-                {label}
-              </Button>
-            ))}
+            FLOW.map(([value, label]) => {
+              const on = ticket.status === value
+              return (
+                <Button
+                  key={value}
+                  variant={on ? "primary" : "secondary"}
+                  aria-pressed={on}
+                  disabled={busy}
+                  onClick={() =>
+                    void run(
+                      "admin-set-status",
+                      { status: value },
+                      on ? "Estado: Asignado." : `Estado: ${label}.`,
+                    )
+                  }
+                >
+                  {label}
+                </Button>
+              )
+            })}
           {!terminal && (
             <Button variant="primary" disabled={busy} onClick={() => setDialog("cerrar")}>
               Cerrar
@@ -445,6 +455,9 @@ export function TicketDetail() {
               Reabrir
             </Button>
           </div>
+        )}
+        {!terminal && (
+          <p className={styles.hint}>Vuelve a pulsar En curso, En espera o Resuelto para volver a Asignado.</p>
         )}
         {ticket.status === "duplicado" && (
           <p className={styles.hint}>Si se marcó por error, quita el duplicado y el parte vuelve a como estaba.</p>

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react"
 import { Link, useOutletContext, useSearchParams } from "react-router-dom"
-import { PriorityBadge, StatusBadge } from "../../components/ui/Badge"
+import { PriorityBadge } from "../../components/ui/Badge"
+import { TicketStatusChips } from "../../components/TicketStatusChips"
 import { Alert } from "../../components/ui/Alert"
 import { Button } from "../../components/ui/Button"
 import { Spinner } from "../../components/ui/Spinner"
-import { formatWhen, priorityLabel, statusLabel } from "../../domain/labels"
+import { formatWhen, priorityLabel } from "../../domain/labels"
 import type { AdminContextValue } from "./AdminShell"
 import styles from "./Admin.module.css"
 
@@ -60,11 +61,7 @@ function currentView(value: string | null): View {
 }
 
 function statusChip(ticket: TicketRow) {
-  const status = statusLabel(ticket.status)
-  if (ticket.status === "asignado" && ticket.assignee) {
-    return <StatusBadge status={status} label={ticket.assignee} />
-  }
-  return <StatusBadge status={status} />
+  return <TicketStatusChips status={ticket.status} assignee={ticket.assignee} />
 }
 
 export function TicketList() {
@@ -271,7 +268,6 @@ export function TicketList() {
           <tbody>
             {tickets.map((ticket) => {
               const priority = priorityLabel(ticket.priority)
-              const nameOnChip = ticket.status === "asignado" && Boolean(ticket.assignee)
               return (
                 <tr key={ticket.id}>
                   <td>
@@ -292,7 +288,7 @@ export function TicketList() {
                   <td>{ticket.location}</td>
                   <td>{statusChip(ticket)}</td>
                   <td>{priority ? <PriorityBadge priority={priority} /> : "Sin prioridad"}</td>
-                  <td>{nameOnChip ? "—" : (ticket.assignee ?? "Sin asignar")}</td>
+                  <td>{ticket.assignee ? "—" : "Sin asignar"}</td>
                   <td>{formatWhen(ticket.createdAt)}</td>
                 </tr>
               )
@@ -317,9 +313,8 @@ function mailKind(kind: string): string {
 
 function TicketBody({ ticket }: { ticket: TicketRow }) {
   const priority = priorityLabel(ticket.priority)
-  const nameOnChip = ticket.status === "asignado" && Boolean(ticket.assignee)
   const meta = [ticket.location]
-  if (!nameOnChip) meta.push(ticket.assignee ?? "Sin asignar")
+  if (!ticket.assignee) meta.push("Sin asignar")
   meta.push(formatWhen(ticket.createdAt))
   return (
     <>

@@ -33,6 +33,12 @@ begin
   end if;
 
   perform montaigne_fix.admin_set_status(v_fran, v_a, 'en_curso', null);
+  perform montaigne_fix.admin_set_status(v_fran, v_a, 'en_curso', null);
+  select status into v_status from montaigne_fix.tickets where id = v_a;
+  if v_status <> 'asignado' then
+    raise exception 'FALLO: repetir En curso debía volver a asignado, está %', v_status;
+  end if;
+  perform montaigne_fix.admin_set_status(v_fran, v_a, 'en_curso', null);
   perform montaigne_fix.admin_add_note(v_fran, v_a, 'Llamar al proveedor');
   perform montaigne_fix.admin_add_materials(v_fran, v_a, array['silicona blanca', '2 bisagras 35 mm']);
 

@@ -17,7 +17,7 @@ serveAdmin(async (staff, body) => {
     p_duplicate_code: text(body.duplicateCode) || null,
     p_reason: reason || null,
   })
-  if (status === "resuelto") await notifyResolved(ticketId, staff.id, staff.name)
+  if (status === "resuelto" && result.applied === "resuelto") await notifyResolved(ticketId, staff.id, staff.name)
   if (status === "cerrado") {
     const mail = await notifyClosed(ticketId, linked)
     return { ...result, emailError: mail.error }

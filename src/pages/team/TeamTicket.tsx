@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState, type FormEvent } from "react"
 import { Link, useOutletContext, useParams } from "react-router-dom"
 import { Alert } from "../../components/ui/Alert"
-import { PriorityBadge, StatusBadge } from "../../components/ui/Badge"
+import { PriorityBadge } from "../../components/ui/Badge"
+import { TicketStatusChips } from "../../components/TicketStatusChips"
 import { Button } from "../../components/ui/Button"
 import { Textarea } from "../../components/ui/Field"
 import { Spinner } from "../../components/ui/Spinner"
 import { Materials } from "../../components/Materials"
 import { TicketPhotos, type TicketPhoto } from "../../components/TicketPhotos"
-import { eventLine, formatWhen, priorityLabel, statusLabel } from "../../domain/labels"
+import { eventLine, formatWhen, priorityLabel } from "../../domain/labels"
 import { LIMITS } from "../../domain/ticketRules"
 import { Confirm } from "../admin/Confirm"
 import type { TeamContextValue } from "./TeamShell"
@@ -204,12 +205,7 @@ export function TeamTicket() {
       <header>
         <div className={styles.badges}>
           <h2>{ticket.code}</h2>
-          {ticket.status === "asignado" && ticket.assignee ? (
-            <StatusBadge status={statusLabel(ticket.status)} label={ticket.assignee} />
-          ) : (
-            <StatusBadge status={statusLabel(ticket.status)} />
-          )}
-          {ticket.status !== "asignado" && ticket.assignee ? <StatusBadge status="Asignado" label={ticket.assignee} /> : null}
+          <TicketStatusChips status={ticket.status} assignee={ticket.assignee} />
           <span className={styles.beside}>
             {priority ? <PriorityBadge priority={priority} showLabel /> : null}
             <span className={styles.opened}>
@@ -322,21 +318,42 @@ export function TeamTicket() {
         <section className={styles.block}>
           <h3>Estado</h3>
           <div className={styles.actions}>
-            {FLOW.map(([value, label]) => (
-              <Button
-                key={value}
-                variant={ticket.status === value ? "primary" : "secondary"}
-                aria-pressed={ticket.status === value}
-                disabled={busy || ticket.status === value}
-                onClick={() => void run("staff-set-status", { status: value }, `Estado: ${label}.`)}
-              >
-                {label}
-              </Button>
-            ))}
-            <Button variant={ticket.status === "resuelto" ? "primary" : "secondary"} disabled={busy || ticket.status === "resuelto"} onClick={() => setDialog("resuelto")}>
+            {FLOW.map(([value, label]) => {
+              const on = ticket.status === value
+              return (
+                <Button
+                  key={value}
+                  variant={on ? "primary" : "secondary"}
+                  aria-pressed={on}
+                  disabled={busy}
+                  onClick={() =>
+                    void run(
+                      "staff-set-status",
+                      { status: value },
+                      on ? "Estado: Asignado." : `Estado: ${label}.`,
+                    )
+                  }
+                >
+                  {label}
+                </Button>
+              )
+            })}
+            <Button
+              variant={ticket.status === "resuelto" ? "primary" : "secondary"}
+              aria-pressed={ticket.status === "resuelto"}
+              disabled={busy}
+              onClick={() => {
+                if (ticket.status === "resuelto") {
+                  void run("staff-set-status", { status: "resuelto" }, "Estado: Asignado.")
+                  return
+                }
+                setDialog("resuelto")
+              }}
+            >
               Resuelto
             </Button>
           </div>
+          <p className={styles.hint}>Vuelve a pulsar el marcado para volver a Asignado.</p>
         </section>
       )}
 

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react"
 import { Link, useOutletContext, useSearchParams } from "react-router-dom"
 import { Alert } from "../../components/ui/Alert"
-import { PriorityBadge, StatusBadge } from "../../components/ui/Badge"
+import { PriorityBadge } from "../../components/ui/Badge"
+import { TicketStatusChips } from "../../components/TicketStatusChips"
 import { Spinner } from "../../components/ui/Spinner"
-import { formatWhen, priorityLabel, statusLabel } from "../../domain/labels"
+import { formatWhen, priorityLabel } from "../../domain/labels"
 import type { TeamContextValue } from "./TeamShell"
 import styles from "./Team.module.css"
 
@@ -117,19 +118,11 @@ export function TeamList() {
       <div className={styles.cards}>
         {tickets.map((ticket) => {
           const priority = priorityLabel(ticket.priority)
-          const status = statusLabel(ticket.status)
           return (
             <Link key={ticket.id} className={styles.card} to={{ pathname: `/equipo/${ticket.code}`, search: params.toString() }}>
               <div className={styles.badges}>
                 <span className={styles.code}>{ticket.code}</span>
-                {ticket.status === "asignado" && ticket.assignee ? (
-                  <StatusBadge status={status} label={ticket.assignee} />
-                ) : (
-                  <StatusBadge status={status} />
-                )}
-                {ticket.status !== "asignado" && ticket.assignee ? (
-                  <StatusBadge status="Asignado" label={ticket.assignee} />
-                ) : null}
+                <TicketStatusChips status={ticket.status} assignee={ticket.assignee} />
                 {priority ? <PriorityBadge priority={priority} /> : <span className={styles.muted}>Sin prioridad</span>}
                 <span className={styles.noteWhen}>{formatWhen(ticket.createdAt)}</span>
               </div>

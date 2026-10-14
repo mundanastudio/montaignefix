@@ -10,6 +10,6 @@ serveTeam(async (staff, body) => {
   if (!ALLOWED.has(status)) throw new HttpError(400, { ok: false, message: "Ese cambio de estado no está permitido." })
   const ticketId = uuid(body.ticketId)
   const result = await rpc("staff_set_status", { p_actor: staff.id, p_ticket: ticketId, p_status: status })
-  if (status === "resuelto") await notifyResolved(ticketId, staff.id, staff.name)
+  if (status === "resuelto" && result.applied === "resuelto") await notifyResolved(ticketId, staff.id, staff.name)
   return result
 })
