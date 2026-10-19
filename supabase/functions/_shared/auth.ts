@@ -20,7 +20,7 @@ export interface Staff {
   is_combo?: boolean
 }
 
-type Credential = "pin" | "fran" | "curro"
+type Credential = "pin" | string
 
 interface TokenPayload {
   typ: "gate" | "team" | "admin"
@@ -90,7 +90,12 @@ export function pinLength(): number {
 }
 
 function credentialOf(typ: TokenPayload["typ"], sub?: string): Credential {
-  if (typ === "admin") return sub === "curro" ? "curro" : "fran"
+  if (typ === "admin") {
+    if (!sub || !passwordHash(sub)) {
+      throw new HttpError(401, { ok: false, message: "Elige quién eres." })
+    }
+    return sub
+  }
   return "pin"
 }
 
@@ -186,7 +191,7 @@ export async function verifyToken(token: string, expected: TokenPayload["typ"][]
   if (!expected.includes(payload.typ) || payload.exp * 1000 <= Date.now()) {
     throw new HttpError(401, { ok: false, message: expiredMessage(payload.typ === "admin" ? "admin" : "team") })
   }
-  if (payload.cred !== "pin" && payload.cred !== "fran" && payload.cred !== "curro") {
+  if (payload.cred !== "pin" && !passwordHash(payload.cred)) {
     throw new HttpError(401, { ok: false, message: expiredMessage(payload.typ) })
   }
   if (typeof payload.ver !== "number" || !Number.isInteger(payload.ver)) {
@@ -363,6 +368,7 @@ export async function technicians(): Promise<{ slug: string; name: string }[]> {
 const PASSWORD_HASH: Record<string, string> = {
   fran: "MF_ADMIN_PASSWORD_HASH_FRAN",
   curro: "MF_ADMIN_PASSWORD_HASH_CURRO",
+  carlos: "MF_ADMIN_PASSWORD_HASH_CARLOS",
 }
 
 export function passwordHash(slug: string): string | undefined {

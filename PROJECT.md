@@ -15,7 +15,7 @@ Herramienta web para abrir y gestionar **partes de reparación física** en el C
 | Rol | Quién | Acceso |
 |---|---|---|
 | Solicitante | Profesores y trabajadores del colegio | Formulario abierto, sin login |
-| Gerente / Admin | **Fran** (Francisco Flores, `Francisco.flores@grupomontaigne.com`) y **Curro** (`curromena89@gmail.com`) | Panel de gestión con **contraseña** (una por persona, para saber quién hizo cada cambio) |
+| Gerente / Admin | **Fran** (Francisco Flores, `Francisco.flores@grupomontaigne.com`), **Curro** (`curromena89@gmail.com`) y **Carlos** (`carlosjperezfernandez@gmail.com`) | Panel de gestión con **contraseña** (una por persona, para saber quién hizo cada cambio) |
 | Equipo de mantenimiento | **Fran, Agustín, Andrés** | Panel del equipo con **PIN compartido** (4 dígitos; se puede pasar a 6) + selector "¿Quién eres?" |
 
 - Fran es a la vez gerente y miembro del equipo (se le pueden asignar tareas).
@@ -113,7 +113,7 @@ Tablas mínimas (ajusta nombres si lo ves mejor, pero justifícalo):
 - `storage_orphans`: rutas cuya fila se borró pero Storage no las quitó (para limpiar a mano).
 - `ticket_events`: **historial** de todo cambio (quién, qué, valor anterior, valor nuevo, cuándo). Fuente de verdad para fechas y para los informes. Incluye `foto_anadida` / `foto_borrada` cuando un técnico o Gestión añade o borra después (las del formulario no generan evento) y `duplicado` al unir un aviso («Unió el aviso al parte MF-XXXX»).
 - `ticket_notes`: observaciones con tipo (`gestion` | `interna`), autor y fecha. Las observaciones del solicitante van en `tickets`.
-- `staff`: Fran, Agustín, Andrés (y Curro como admin), con nombre, email y rol.
+- `staff`: Fran, Agustín, Andrés (y Curro y Carlos como admin), con nombre, email y rol.
 - `shopping_items` (lista de la compra), un registro por artículo:
   - `id`
   - `ticket_id` → `tickets.id` (obligatorio, `on delete cascade` para que el borrado a 12 meses se lleve sus materiales)
@@ -152,21 +152,22 @@ Solo se envían estos emails:
 | Fran marca **Cerrado** | Solicitante | "Tu solicitud MF-XXXX (reparación, lugar) ya está solucionada. Gracias." Los avisos unidos también quedan **cerrados**. También se avisa a cada solicitante distinto de los avisos unidos, con el código, la reparación y el lugar **de su** parte. |
 | Fran marca **Rechazado** | Solicitante | Explica el motivo (el texto que escribió Gestión). Asunto: `Sobre tu solicitud MF-XXXX: …`. El mismo motivo llega a quienes abrieron los avisos unidos, con los datos de su parte. Los unidos siguen en estado duplicado. |
 | Fran marca **Duplicado** | Solicitante del aviso unido | Asunto: `Tu aviso MF-XXXX ya estaba registrado`. Variables: nombre de pila, código, código original, reparación, lugar, fecha de apertura. Se envía también si el email es el mismo que el del original. Un fallo de SMTP no deshace el marcado; queda en el log y Gestión ve aviso. Quitar duplicado no retira un correo ya enviado. |
-| Miércoles 8:00 | Fran | Informe semanal |
+| Miércoles 8:00 | Fran y Curro | Informe semanal |
 | Anual (ver 8) | Fran y Curro | Informe anual |
+| Gestión, botón «Enviar informe» | Fran y Curro | Informe semanal en el momento |
 
 Las plantillas HTML y de texto están en `assets/email/` y se copian a `supabase/functions/_shared/email-templates/` (recibido, fran-nuevo, fran-resuelto, cerrado, rechazado, duplicado). Usarlas tal cual; ver `assets/email/LEEME-CURSOR.md`.
 
 ## 7. Informes
 
 **Semanal — todos los miércoles a las 8:00 (hora de Madrid, respetando el cambio de hora):**
-- Email a Fran con una **tabla** de lo esencial: resueltas/cerradas en la semana y pendientes (código, reparación, lugar, prioridad, estado, asignado, fechas).
-- Bloque **"Pendiente de comprar"** en el email: artículos pendientes con incidencia, quién lo pidió y desde cuándo.
-- **PDF adjunto** con el detalle completo de cada incidencia: fechas, estado, prioridad, asignado, todas las observaciones, **Fotos: N** (sin incrustar imágenes), materiales (pendientes y comprados) e historial.
+- Email a Fran y Curro (`curromena89@gmail.com`) con tablas: **Resueltas y cerradas**, **Abiertas**, **Materiales comprados** y **Pendiente de comprar**. Columnas de partes: código, reparación, lugar, prioridad, estado, asignado, **Fechas/Tiempo**. En resueltas: Abierta / Resuelta (fecha) y Tiempo `XdYh` (horas hacia abajo). En abiertas: solo `Abierta: dd/mm/aa · hh:mm`. Materiales comprados en la ventana: Solicitado y Comprado. Pendiente: columna **Solicitado desde**.
+- **PDF adjunto** con las mismas tablas y, después, **Información de las incidencias**: título con enlace a `/gestion/{código}` y ficha (Solicitante, Asignado, Lugar, Reparación, Observaciones si hay, Abierta, Resuelta). Sin historial, fotos, materiales ni notas internas por ticket.
+- El botón «Enviar informe» de Gestión manda el mismo semanal a Fran y Curro.
 - Programado con `pg_cron` en Supabase llamando a una Edge Function (o GitHub Actions si es más fiable). Todo en plan gratuito.
 
 **Anual — 1 de julio (fin de curso):**
-- Email + PDF a Fran y Curro con **todas las incidencias Resueltas/Cerradas** de los 12 meses anteriores.
+- Email + PDF a Fran y Curro con **todas las incidencias Resueltas/Cerradas** de los 12 meses anteriores (misma columna Fechas/Tiempo y mismas fichas resumidas).
 
 **Estética de informes y PDF:** el arte del portfolio adjunto (imagen corporativa de Mundana / Grupo Montaigne) + logo de Montaigne Fix.
 

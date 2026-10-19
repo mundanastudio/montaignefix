@@ -14,6 +14,7 @@ import styles from "./Admin.module.css"
 const MANAGERS = [
   { slug: "fran", name: "Fran" },
   { slug: "curro", name: "Curro" },
+  { slug: "carlos", name: "Carlos" },
 ]
 
 const SHOW_TEST_EMAILS = false

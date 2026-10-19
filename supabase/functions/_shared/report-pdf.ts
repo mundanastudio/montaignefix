@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "npm:pdf-lib@1.17.1"
+import { PDFDocument, PDFString, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "npm:pdf-lib@1.17.1"
 import { logoFix, logoGrupo, logoMundana } from "./report-logos.ts"
 
 const W = 595.28
@@ -16,11 +16,8 @@ const LINE = rgb(226 / 255, 226 / 255, 226 / 255)
 export interface PdfTicket {
   code: string
   title: string
-  meta: string
+  href: string
   facts: Array<[string, string]>
-  materials: string[][]
-  notes: string[]
-  history: string[]
 }
 
 export interface PdfReport {
@@ -43,20 +40,26 @@ function latin(value: string): string {
 }
 
 function wrap(text: string, font: PDFFont, size: number, width: number): string[] {
-  const words = latin(text).split(" ").filter(Boolean)
-  if (words.length === 0) return [""]
+  const chunks = String(text).replace(/\r\n/g, "\n").split("\n")
   const lines: string[] = []
-  let line = ""
-  for (const word of words) {
-    const next = line ? `${line} ${word}` : word
-    if (font.widthOfTextAtSize(next, size) <= width) line = next
-    else {
-      if (line) lines.push(line)
-      line = word
+  for (const chunk of chunks) {
+    const words = latin(chunk).split(" ").filter(Boolean)
+    if (words.length === 0) {
+      lines.push("")
+      continue
     }
+    let line = ""
+    for (const word of words) {
+      const next = line ? `${line} ${word}` : word
+      if (font.widthOfTextAtSize(next, size) <= width) line = next
+      else {
+        if (line) lines.push(line)
+        line = word
+      }
+    }
+    if (line) lines.push(line)
   }
-  if (line) lines.push(line)
-  return lines
+  return lines.length ? lines : [""]
 }
 
 function png(doc: PDFDocument, b64: string): Promise<PDFImage> {
@@ -99,6 +102,19 @@ export async function buildReportPdf(report: PdfReport): Promise<Uint8Array> {
   const text = (value: string, size: number, face: PDFFont, color = INK, x = LEFT) => {
     page.drawText(latin(value), { x, y, size, font: face, color })
     y -= size + 4
+  }
+  const link = (href: string, x1: number, y1: number, x2: number, y2: number) => {
+    if (!href) return
+    const annot = doc.context.register(
+      doc.context.obj({
+        Type: "Annot",
+        Subtype: "Link",
+        Rect: [x1, y1, x2, y2],
+        Border: [0, 0, 0],
+        A: { Type: "Action", S: "URI", URI: PDFString.of(href) },
+      }),
+    )
+    page.node.addAnnot(annot)
   }
 
   chrome(page)
@@ -151,10 +167,22 @@ export async function buildReportPdf(report: PdfReport): Promise<Uint8Array> {
 
   for (const table of report.tables) drawTable(table.title, table.headers, table.rows, table.widths)
 
+  if (report.tickets.length) {
+    need(28)
+    text("Información de las incidencias", 12, bold, NAVY)
+    y -= 4
+  }
+
   for (const ticket of report.tickets) {
     need(70)
-    text(`${ticket.code} · ${ticket.title}`, 12, bold, NAVY)
-    text(ticket.meta, 8, font, MUTED)
+    const heading = `${ticket.code} · ${ticket.title}`
+    const titleY = y
+    text(heading, 12, bold, NAVY)
+    if (ticket.href) {
+      const width = Math.min(bold.widthOfTextAtSize(latin(heading), 12), RIGHT - LEFT)
+      page.drawRectangle({ x: LEFT, y: titleY - 2, width, height: 0.6, color: GOLD })
+      link(ticket.href, LEFT, titleY - 2, LEFT + width, titleY + 12)
+    }
     y -= 2
     for (const [label, value] of ticket.facts) {
       const lines = wrap(value, font, 8, 390)
@@ -166,29 +194,6 @@ export async function buildReportPdf(report: PdfReport): Promise<Uint8Array> {
         page.drawText(line, { x: LEFT + 116, y: y - index * 11, size: 8, font, color: INK })
       })
       y -= height
-    }
-    y -= 8
-    if (ticket.materials.length) drawTable("Materiales", ["Artículo", "Estado", "Quién", "Fecha"], ticket.materials, [200, 80, 120, 115])
-    if (ticket.notes.length) {
-      need(20)
-      text("Observaciones", 9, bold, NAVY)
-      for (const note of ticket.notes) {
-        for (const line of wrap(note, font, 9, RIGHT - LEFT)) {
-          need(14)
-          text(line, 9, font)
-        }
-      }
-      y -= 4
-    }
-    if (ticket.history.length) {
-      need(20)
-      text("Historial", 9, bold, NAVY)
-      for (const line of ticket.history) {
-        for (const part of wrap(line, font, 9, RIGHT - LEFT)) {
-          need(14)
-          text(part, 9, font)
-        }
-      }
     }
     y -= 10
   }

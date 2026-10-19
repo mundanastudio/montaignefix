@@ -9,18 +9,18 @@ La web es un sitio estático (React, Vite, TypeScript). La base de datos, las fo
 | Quién | Dónde | Qué hace |
 |---|---|---|
 | Profesor | `/` | Abre el parte. Sin contraseña. Como máximo 3 partes cada 24 horas con el mismo email, 10 por hora y 30 por día desde la misma red. Si en un día se pasan de 100, se paran los envíos nuevos. Fran, Curro, `andrescanorodriguez@gmail.com` y `agumasero@gmail.com` no tienen ese tope. `patriciacastilloorozco33@gmail.com`, `susanacrespomarquez@gmail.com`, `remelucia78@gmail.com`, `16.11.96.maria@gmail.com` y `scmary97@gmail.com` pueden abrir 10 cada 24 h y no cuentan para el tope de red. Solo esos Gmail (y el de Curro) entran fuera del dominio corporativo; el resto de Gmail no. |
-| Fran y Curro | `/gestion` | Tres pestañas: Abiertas, Resueltas y Cerradas. Asignan, priorizan, compran materiales, cierran, reabren, rechazan o marcan duplicado. Cada uno entra con su contraseña. |
+| Fran, Curro y Carlos | `/gestion` | Tres pestañas: Abiertas, Resueltas y Cerradas. Asignan, priorizan, compran materiales, cierran, reabren, rechazan o marcan duplicado. Cada uno entra con su contraseña. |
 | Fran, Agustín y Andrés | `/equipo` | PIN compartido (4 cifras; se puede pasar a 6), el mismo para los tres, y luego eligen su nombre. Trabajan solo las tareas que tienen asignadas. |
 
 Un técnico puede pasar a En curso, En espera o Resuelto, dejar una nota y pedir materiales. No puede marcar nada como comprado ni tocar una tarea de otro. Si se equivoca de persona en el dispositivo, usa «Cambiar de persona».
 
 Al abrir un parte salen dos correos: el acuse al profesor y el aviso a Fran. Al resolver, Fran recibe otro. Al cerrar, el profesor recibe el de solucionado. Los logos de esos correos salen de la dirección pública del sitio (`APP_PUBLIC_URL/email/`).
 
-Cada miércoles a las 08:00 (hora de Madrid) Fran recibe el informe de los últimos 7 días, con PDF. El 1 de julio a las 08:00, Fran y Curro reciben el informe de los 12 meses anteriores. Después de un informe anual correcto, se borran solo los partes resueltos o cerrados que tengan más de 12 meses y que ya hayan salido en un informe. Los abiertos, en espera, rechazados y duplicados no se borran. Si el informe anual falla, Curro recibe un aviso y el borrado no avanza. El botón «Enviar informe» de Gestión manda el semanal en el momento y no sustituye al del miércoles.
+Cada miércoles a las 08:00 (hora de Madrid) Fran y Curro reciben el informe de los últimos 7 días, con PDF. El 1 de julio a las 08:00, ambos reciben el informe de los 12 meses anteriores. Después de un informe anual correcto, se borran solo los partes resueltos o cerrados que tengan más de 12 meses y que ya hayan salido en un informe. Los abiertos, en espera, rechazados y duplicados no se borran. Si el informe anual falla, Curro recibe un aviso y el borrado no avanza. El botón «Enviar informe» de Gestión manda el semanal en el momento (también a Fran y Curro) y no sustituye al del miércoles.
 
 El número `MF-0001`, `MF-0002`… no se reutiliza, tampoco si se borra el parte.
 
-Los correos van solo al solicitante, a Fran y, en el informe anual, también a Curro.
+Los correos de cada parte van al solicitante y a Fran. Los informes (semanal, anual y el botón de Gestión) llegan a Fran y a Curro.
 
 ## Cambiar el PIN o una contraseña
 
@@ -41,7 +41,7 @@ npx supabase@latest secrets set MF_TEAM_PIN_HASH='pega-aqui-el-hash' --project-r
 Remove-Item Env:MF_SECRET
 ```
 
-Contraseña de Fran: `MF_ADMIN_PASSWORD_HASH_FRAN`. Contraseña de Curro: `MF_ADMIN_PASSWORD_HASH_CURRO`. Cada una se genera con `password` y se guarda en su secreto. Al guardar el hash nuevo, las sesiones de esa persona dejan de valer. No hace falta volver a desplegar la web.
+Contraseña de Fran: `MF_ADMIN_PASSWORD_HASH_FRAN`. Contraseña de Curro: `MF_ADMIN_PASSWORD_HASH_CURRO`. Contraseña de Carlos: `MF_ADMIN_PASSWORD_HASH_CARLOS`. Cada una se genera con `password` y se guarda en su secreto. Al guardar el hash nuevo, las sesiones de esa persona dejan de valer. No hace falta volver a desplegar la web.
 
 Para un PIN de 6 dígitos, el hash tiene que ser de 6 cifras y además:
 
@@ -76,7 +76,7 @@ values ('lucia', 'Lucía', null, null, false, true);
 
 El orden de los nombres en la pantalla es Fran, Agustín, Andrés y Curro. Un slug nuevo sale el primero hasta que se añada a la lista `ORDER` de `supabase/functions/_shared/auth.ts` y se redespliegue `team-login`.
 
-Para que alguien sea gerente hace falta, además, `is_manager` en verdadero, un email, y una línea nueva en `PASSWORD_HASH` de ese mismo archivo apuntando a un secreto `MF_ADMIN_PASSWORD_HASH_…`. Hoy solo Fran y Curro son gerentes.
+Para que alguien sea gerente hace falta, además, `is_manager` en verdadero, un email, y una línea nueva en `PASSWORD_HASH` de ese mismo archivo apuntando a un secreto `MF_ADMIN_PASSWORD_HASH_…`. Hoy Fran, Curro y Carlos son gerentes.
 
 Para dar de baja a alguien sin borrar su historial: `update montaigne_fix.staff set active = false where slug = 'lucia';`
 

@@ -34,21 +34,67 @@ interface Row {
   closed_at: string | null
 }
 
-function when(iso: string | null | undefined): string {
-  if (!iso) return "—"
+function madridParts(iso: string, withTime: boolean) {
   const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return "—"
-  const parts = new Intl.DateTimeFormat("en-GB", {
+  if (Number.isNaN(date.getTime())) return null
+  return new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/Madrid",
     day: "2-digit",
     month: "2-digit",
     year: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
+    ...(withTime ? { hour: "2-digit", minute: "2-digit", hourCycle: "h23" as const } : {}),
   }).formatToParts(date)
-  const pick = (type: string) => parts.find((part) => part.type === type)?.value ?? ""
-  return `${pick("day")}/${pick("month")}/${pick("year")} · ${pick("hour")}:${pick("minute")}`
+}
+
+function pickPart(parts: Intl.DateTimeFormatPart[], type: string): string {
+  return parts.find((part) => part.type === type)?.value ?? ""
+}
+
+function when(iso: string | null | undefined): string {
+  if (!iso) return "—"
+  const parts = madridParts(iso, true)
+  if (!parts) return "—"
+  return `${pickPart(parts, "day")}/${pickPart(parts, "month")}/${pickPart(parts, "year")} · ${pickPart(parts, "hour")}:${pickPart(parts, "minute")}`
+}
+
+function whenDate(iso: string | null | undefined): string {
+  if (!iso) return "—"
+  const parts = madridParts(iso, false)
+  if (!parts) return "—"
+  return `${pickPart(parts, "day")}/${pickPart(parts, "month")}/${pickPart(parts, "year")}`
+}
+
+function duration(from: string | null | undefined, to: string | null | undefined): string {
+  if (!from || !to) return "—"
+  const start = new Date(from).getTime()
+  const end = new Date(to).getTime()
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) return "0d0h"
+  const hours = Math.floor((end - start) / 3_600_000)
+  return `${Math.floor(hours / 24)}d${hours % 24}h`
+}
+
+function doneDates(row: Row): string {
+  const resolved = row.resolved_at ?? row.closed_at
+  return `Abierta: ${whenDate(row.created_at)}\nResuelta: ${whenDate(resolved)}\nTiempo: ${duration(row.created_at, resolved)}`
+}
+
+function openDates(row: Row): string {
+  return `Abierta: ${when(row.created_at)}`
+}
+
+function asideDates(row: Row): string {
+  return `Abierta: ${whenDate(row.created_at)}\nCerrada: ${whenDate(row.closed_at)}`
+}
+
+function ticketHref(code: string): string {
+  const base = (Deno.env.get("APP_PUBLIC_URL") ?? "").replace(/\/$/, "")
+  return base ? `${base}/gestion/${encodeURIComponent(code)}` : ""
+}
+
+function inWindow(iso: string | null, start: number, end: number): boolean {
+  if (!iso) return false
+  const time = new Date(iso).getTime()
+  return time >= start && time < end
 }
 
 function priority(value: string | null): string {
@@ -98,110 +144,89 @@ async function managerEmail(): Promise<string> {
   return typeof data?.email === "string" ? data.email : ""
 }
 
-async function managerEmails(): Promise<string[]> {
-  const { data } = await db().from("staff").select("email").eq("is_manager", true).eq("active", true)
-  const list = (data ?? []).map((row) => (typeof row.email === "string" ? row.email.trim() : "")).filter(Boolean)
-  return [...new Set(list)]
+async function reportRecipients(): Promise<string[]> {
+  const set = new Set<string>()
+  const fran = await managerEmail()
+  if (fran) set.add(fran)
+  const { data } = await db().from("staff").select("email").eq("slug", "curro").eq("active", true).maybeSingle()
+  const curro = typeof data?.email === "string" ? data.email.trim() : ""
+  set.add(curro || "curromena89@gmail.com")
+  return [...set]
 }
 
-function historyLine(type: string, oldValue: string | null, newValue: string | null): string {
-  if (type === "creado") return "Abrió la incidencia"
-  if (type === "estado") return `Cambió el estado de ${status(oldValue ?? "")} a ${status(newValue ?? "")}`
-  if (type === "prioridad") return `Cambió la prioridad de ${priority(oldValue)} a ${priority(newValue)}`
-  if (type === "asignacion") return `Asignación: ${oldValue ?? "nadie"} → ${newValue ?? "nadie"}`
-  if (type === "nota") return newValue === "interna" ? "Añadió una observación interna" : "Añadió una observación de gestión"
-  if (type === "material_solicitado") return `Pidió material: ${newValue ?? ""}`
-  if (type === "material_comprado") return `Marcó como comprado: ${newValue ?? ""}`
-  if (type === "material_repuesto") return `Volvió a dejar pendiente: ${oldValue ?? ""}`
-  if (type === "material_borrado") return `Borró el material: ${oldValue ?? ""}`
-  if (type === "material_editado") return `Cambió el material «${oldValue ?? ""}» por «${newValue ?? ""}»`
-  if (type === "foto_anadida") return "Añadió una foto"
-  if (type === "foto_borrada") return "Borró una foto"
-  if (type === "duplicado") return `Unió el aviso al parte ${newValue ?? ""}`
-  return "Registró un cambio"
+async function sendToManagers(pack: {
+  subject: string
+  html: string
+  text: string
+  pdf: Uint8Array
+  pdfName: string
+}): Promise<{ ok: boolean; error: string | null }> {
+  const recipients = await reportRecipients()
+  if (!recipients.length) return { ok: false, error: "No hay destinatarios para el informe." }
+  const errors: string[] = []
+  for (const to of recipients) {
+    const sent = await sendReport({ to, ...pack })
+    if (!sent.ok) errors.push(`${to}: ${sent.error ?? "fallo"}`)
+  }
+  return { ok: errors.length === 0, error: errors.join(" ") || null }
 }
 
 async function fichas(rows: Row[], staff: Map<string, string>): Promise<PdfTicket[]> {
-  if (rows.length === 0) return []
-  const ids = rows.map((row) => row.id)
-  const [materials, notes, events, photos] = await Promise.all([
-    db().from("shopping_items").select("ticket_id, description, status, created_at, purchased_at, requested_by, purchased_by").in("ticket_id", ids),
-    db().from("ticket_notes").select("ticket_id, kind, body, created_at, author_id").in("ticket_id", ids).order("created_at", { ascending: false }),
-    db().from("ticket_events").select("ticket_id, event_type, actor_label, old_value, new_value, created_at").in("ticket_id", ids).order("created_at", { ascending: false }),
-    db().from("ticket_photos").select("ticket_id").in("ticket_id", ids),
-  ])
-  const byTicket = (list: Array<Record<string, unknown>> | null) => {
-    const map = new Map<string, Array<Record<string, unknown>>>()
-    for (const item of list ?? []) {
-      const key = String(item.ticket_id)
-      map.set(key, [...(map.get(key) ?? []), item])
-    }
-    return map
-  }
-  const materialMap = byTicket(materials.data)
-  const noteMap = byTicket(notes.data)
-  const eventMap = byTicket(events.data)
-  const photoCount = new Map<string, number>()
-  for (const item of photos.data ?? []) {
-    const key = String(item.ticket_id)
-    photoCount.set(key, (photoCount.get(key) ?? 0) + 1)
-  }
-  return rows.map((row) => ({
-    code: row.code,
-    title: clip(row.description, 90),
-    meta: `${row.location} · ${priority(row.priority)} · ${status(row.status)} · ${staff.get(row.assigned_to ?? "") ?? "Sin asignar"}`,
-    facts: [
+  return rows.map((row) => {
+    const notes = row.requester_notes?.trim()
+    const facts: Array<[string, string]> = [
       ["Solicitante", `${row.requester_name} · ${row.requester_email}`],
+      ["Asignado", staff.get(row.assigned_to ?? "") ?? "Sin asignar"],
+      ["Lugar", row.location],
       ["Reparación", row.description],
-      ["Observaciones del solicitante", row.requester_notes?.trim() || "Sin observaciones"],
-      ["Fotos", String(photoCount.get(row.id) ?? 0)],
-      ["Abierta", when(row.created_at)],
-      ["Asignada", when(row.assigned_at)],
-      ["Resuelta", when(row.resolved_at)],
-      ["Cerrada", when(row.closed_at)],
-    ],
-    materials: (materialMap.get(row.id) ?? []).map((item) => [
-      String(item.description),
-      item.status === "comprado" ? "Comprado" : "Pendiente",
-      staff.get(String(item.status === "comprado" ? item.purchased_by : item.requested_by)) ?? "",
-      when(String(item.status === "comprado" ? item.purchased_at : item.created_at)),
-    ]),
-    notes: (noteMap.get(row.id) ?? []).map((item) => {
-      const kind = item.kind === "interna" ? "Interna" : "Gestión"
-      return `${kind} · ${staff.get(String(item.author_id)) ?? "Equipo"} · ${when(String(item.created_at))} — ${item.body}`
-    }),
-    history: (eventMap.get(row.id) ?? []).map(
-      (item) => `${when(String(item.created_at))} · ${item.actor_label} ${historyLine(String(item.event_type), item.old_value ? String(item.old_value) : null, item.new_value ? String(item.new_value) : null)}.`,
-    ),
-  }))
+    ]
+    if (notes) facts.push(["Observaciones", notes])
+    facts.push(["Abierta", when(row.created_at)])
+    facts.push(["Resuelta", row.resolved_at || row.closed_at ? when(row.resolved_at ?? row.closed_at) : "—"])
+    return {
+      code: row.code,
+      title: clip(row.description, 90),
+      href: ticketHref(row.code),
+      facts,
+    }
+  })
 }
 
-async function pendingShopping(staff: Map<string, string>) {
+async function shoppingTable(
+  staff: Map<string, string>,
+  kind: "pendiente" | "comprado",
+  start?: Date,
+  end?: Date,
+) {
   const { data } = await db()
     .from("shopping_items")
-    .select("description, created_at, requested_by, ticket_id")
-    .eq("status", "pendiente")
-    .order("created_at", { ascending: true })
-  const ids = [...new Set((data ?? []).map((item) => String(item.ticket_id)))]
+    .select("description, created_at, purchased_at, requested_by, ticket_id")
+    .eq("status", kind)
+    .order(kind === "comprado" ? "purchased_at" : "created_at", { ascending: true })
+  let items = data ?? []
+  if (kind === "comprado" && start && end) {
+    const startMs = start.getTime()
+    const endMs = end.getTime()
+    items = items.filter((item) => inWindow(item.purchased_at ? String(item.purchased_at) : null, startMs, endMs))
+  }
+  const ids = [...new Set(items.map((item) => String(item.ticket_id)))]
   const { data: tickets } = ids.length
     ? await db().from("tickets").select("id, code, location").in("id", ids)
     : { data: [] }
   const places = new Map((tickets ?? []).map((ticket) => [String(ticket.id), ticket]))
-  return (data ?? []).map((item) => {
+  return items.map((item) => {
     const ticket = places.get(String(item.ticket_id))
+    const times =
+      kind === "comprado"
+        ? `Solicitado: ${whenDate(String(item.created_at))}\nComprado: ${whenDate(item.purchased_at ? String(item.purchased_at) : null)}`
+        : when(String(item.created_at))
     return [
       String(item.description),
       `${ticket?.code ?? "—"} · ${ticket?.location ?? ""}`,
       staff.get(String(item.requested_by)) ?? "",
-      when(String(item.created_at)),
+      times,
     ]
   })
-}
-
-function inWindow(iso: string | null, start: number, end: number): boolean {
-  if (!iso) return false
-  const time = new Date(iso).getTime()
-  return time >= start && time < end
 }
 
 function rowCells(row: Row, staff: Map<string, string>, dates: string): string[] {
@@ -222,7 +247,7 @@ function htmlTable(headers: string[], rows: string[][]): string {
     ? rows
         .map(
           (row) =>
-            `<tr>${row.map((cell) => `<td style="padding:8px;border-bottom:1px solid #e2e2e2;vertical-align:top;">${escapeHtml(cell)}</td>`).join("")}</tr>`,
+            `<tr>${row.map((cell) => `<td style="padding:8px;border-bottom:1px solid #e2e2e2;vertical-align:top;">${escapeHtml(cell).replace(/\n/g, "<br>")}</td>`).join("")}</tr>`,
         )
         .join("")
     : `<tr><td colspan="${headers.length}" style="padding:8px;color:#595959;">Ninguna</td></tr>`
@@ -267,13 +292,9 @@ async function markRun(kind: string, periodKey: string, periodEnd: string, ok: b
 }
 
 export async function sendWeeklyNow(): Promise<{ ok: boolean; error: string | null }> {
-  const to = await managerEmail()
-  if (!to) return { ok: false, error: "Fran no tiene un correo configurado." }
   const end = new Date()
   const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000)
-  const built = await weeklyPackage(start, end)
-  const result = await sendReport({ to, ...built })
-  return result
+  return sendToManagers(await weeklyPackage(start, end))
 }
 
 async function weeklyPackage(start: Date, end: Date) {
@@ -292,17 +313,23 @@ async function weeklyPackage(start: Date, end: Date) {
   )
   const open = rows.filter((row) => OPEN.includes(row.status))
   const resolvedOpen = rows.filter((row) => row.status === "resuelto")
-  const shopping = await pendingShopping(staff)
+  const [purchased, shopping] = await Promise.all([
+    shoppingTable(staff, "comprado", start, end),
+    shoppingTable(staff, "pendiente"),
+  ])
   const subtitle = `${fechaLarga(start.toISOString())} al ${fechaLarga(end.toISOString())}`
-  const headers = ["Código", "Reparación", "Lugar", "Prioridad", "Estado", "Asignado", "Fechas"]
-  const doneRows = done.map((row) =>
-    rowCells(row, staff, `Abierta ${when(row.created_at)}\n${row.status === "cerrado" ? "Cerrada" : "Resuelta"} ${when(row.closed_at ?? row.resolved_at)}`),
-  )
-  const openRows = open.map((row) => rowCells(row, staff, when(row.created_at)))
+  const headers = ["Código", "Reparación", "Lugar", "Prioridad", "Estado", "Asignado", "Fechas/Tiempo"]
+  const ticketWidths = [52, 88, 58, 48, 55, 94, 120]
+  const shopBought = ["Artículo", "Incidencia", "Quién lo pidió", "Tiempos"]
+  const shopPending = ["Artículo", "Incidencia", "Quién lo pidió", "Solicitado desde"]
+  const shopWidths = [145, 140, 100, 130]
+  const doneRows = done.map((row) => rowCells(row, staff, doneDates(row)))
+  const openRows = open.map((row) => rowCells(row, staff, openDates(row)))
   const blocks = [
-    { title: "Resueltas y cerradas esta semana", headers, rows: doneRows.map((row) => row.map((cell) => cell.replace(/\n/g, " · "))) },
-    { title: "Siguen abiertas", headers, rows: openRows },
-    { title: "Pendiente de comprar", headers: ["Artículo", "Incidencia", "Quién lo pidió", "Desde"], rows: shopping },
+    { title: "Resueltas y cerradas esta semana", headers, rows: doneRows },
+    { title: "Abiertas", headers, rows: openRows },
+    { title: "Materiales comprados", headers: shopBought, rows: purchased },
+    { title: "Pendiente de comprar", headers: shopPending, rows: shopping },
   ]
   const pdf = await buildReportPdf({
     title: "Informe semanal",
@@ -310,13 +337,14 @@ async function weeklyPackage(start: Date, end: Date) {
     counts: [
       ["Cerradas esta semana", String(done.filter((row) => row.status === "cerrado").length)],
       ["Resueltas, sin cerrar", String(resolvedOpen.length)],
-      ["Siguen abiertas", String(open.length)],
+      ["Abiertas", String(open.length)],
       ["Material pendiente", String(shopping.length)],
     ],
     tables: [
-      { title: "Resueltas y cerradas esta semana", headers, rows: doneRows, widths: [58, 96, 64, 50, 58, 102, 87] },
-      { title: "Siguen abiertas", headers, rows: openRows, widths: [58, 116, 72, 58, 62, 102, 47] },
-      { title: "Pendiente de comprar", headers: ["Artículo", "Incidencia", "Quién lo pidió", "Desde"], rows: shopping, widths: [160, 160, 110, 85] },
+      { title: "Resueltas y cerradas esta semana", headers, rows: doneRows, widths: ticketWidths },
+      { title: "Abiertas", headers, rows: openRows, widths: ticketWidths },
+      { title: "Materiales comprados", headers: shopBought, rows: purchased, widths: shopWidths },
+      { title: "Pendiente de comprar", headers: shopPending, rows: shopping, widths: shopWidths },
     ],
     tickets: await fichas([...done, ...open], staff),
     closing: "Montaigne Fix · Colegio Montaigne de Sevilla · powered by Mundana Studio",
@@ -343,9 +371,10 @@ async function annualPackage(start: Date, end: Date) {
   })
   const main = rows.filter((row) => row.status === "resuelto" || row.status === "cerrado")
   const aside = rows.filter((row) => row.status === "rechazado" || row.status === "duplicado")
-  const headers = ["Código", "Reparación", "Lugar", "Prioridad", "Estado", "Asignado", "Fecha"]
-  const mainRows = main.map((row) => rowCells(row, staff, when(row.closed_at ?? row.resolved_at)))
-  const asideRows = aside.map((row) => rowCells(row, staff, when(row.closed_at)))
+  const headers = ["Código", "Reparación", "Lugar", "Prioridad", "Estado", "Asignado", "Fechas/Tiempo"]
+  const ticketWidths = [52, 88, 58, 48, 55, 94, 120]
+  const mainRows = main.map((row) => rowCells(row, staff, doneDates(row)))
+  const asideRows = aside.map((row) => rowCells(row, staff, asideDates(row)))
   const subtitle = `${fechaLarga(start.toISOString())} al ${fechaLarga(end.toISOString())}`
   const blocks = [
     { title: "Resueltas y cerradas", headers, rows: mainRows },
@@ -361,8 +390,8 @@ async function annualPackage(start: Date, end: Date) {
       ["Duplicadas", String(aside.filter((row) => row.status === "duplicado").length)],
     ],
     tables: [
-      { title: "Resueltas y cerradas", headers, rows: mainRows, widths: [58, 106, 72, 50, 56, 102, 71] },
-      { title: "Rechazadas y duplicadas", headers, rows: asideRows, widths: [58, 106, 72, 50, 56, 102, 71] },
+      { title: "Resueltas y cerradas", headers, rows: mainRows, widths: ticketWidths },
+      { title: "Rechazadas y duplicadas", headers, rows: asideRows, widths: ticketWidths },
     ],
     tickets: await fichas([...main, ...aside], staff),
     closing: "Montaigne Fix · Colegio Montaigne de Sevilla · powered by Mundana Studio",
@@ -436,27 +465,17 @@ export async function runScheduledReports(): Promise<Record<string, unknown>> {
     const start = new Date(end)
     start.setUTCMonth(start.getUTCMonth() - 12)
     const pack = await annualPackage(start, end)
-    const recipients = await managerEmails()
-    let ok = recipients.length > 0
-    const errors: string[] = []
-    for (const to of recipients) {
-      const sent = await sendReport({ to, ...pack })
-      if (!sent.ok) {
-        ok = false
-        errors.push(sent.error ?? "fallo")
-      }
-    }
-    await markRun("anual", clock.year, end.toISOString(), ok, errors.join(" ") || `Enviado a ${recipients.length}`)
-    if (!ok) await warnCurroAnnualFailed()
-    result.anual = ok
+    const sent = await sendToManagers(pack)
+    await markRun("anual", clock.year, end.toISOString(), sent.ok, sent.error ?? "Enviado a Fran y Curro")
+    if (!sent.ok) await warnCurroAnnualFailed()
+    result.anual = sent.ok
   }
   if (clock.weekday === "Wed" && !(await alreadyOk("semanal", clock.key))) {
     const end = now
     const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000)
     const pack = await weeklyPackage(start, end)
-    const to = await managerEmail()
-    const sent = await sendReport({ to, ...pack })
-    await markRun("semanal", clock.key, end.toISOString(), sent.ok, sent.error ?? "Enviado a Fran")
+    const sent = await sendToManagers(pack)
+    await markRun("semanal", clock.key, end.toISOString(), sent.ok, sent.error ?? "Enviado a Fran y Curro")
     result.semanal = sent.ok
   }
   if (!(await alreadyOk("purga", clock.key)) && (await lastAnnualEnd())) {

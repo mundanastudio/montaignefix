@@ -7,7 +7,7 @@ Deno.serve((req) =>
     const slug = text(body.slug)
     const password = text(body.password)
     const staff = await loadStaff(slug)
-    if (!staff?.is_manager) return json(400, { ok: false, message: "Elige Fran o Curro." })
+    if (!staff?.is_manager) return json(400, { ok: false, message: "Elige quién eres." })
     if ([...password].length < 8) return json(400, { ok: false, message: "La contraseña tiene que tener al menos 8 caracteres." })
 
     const hash = await assertConfigured(passwordHash(staff.slug))
