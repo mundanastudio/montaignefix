@@ -1,30 +1,44 @@
 # Montaigne Fix
 
-Partes de reparación del Colegio Montaigne (Sevilla). El profesor abre un parte, Fran lo asigna y le pone prioridad, el técnico lo trabaja y, si hace falta, pide material. Fran marca ese material como comprado y cierra el parte. El profesor recibe un correo cuando queda solucionado.
+Partes de reparación del Colegio Montaigne (Sevilla). El profesor abre un parte, Gestión lo asigna y le pone prioridad, el técnico lo trabaja y, si hace falta, pide material. Gestión marca ese material como comprado y cierra el parte. El profesor recibe un correo cuando queda solucionado.
 
 La web es un sitio estático (React, Vite, TypeScript). La base de datos, las fotos y el correo viven en Supabase (proyecto `montaigne-fix`, ref `rnghppmuqbdpbkkljnsr`, región `eu-west-1`). El navegador solo llama a Edge Functions con la clave pública. No lee ni escribe tablas.
+
+Sitios públicos: [montaignefix.pages.dev](https://montaignefix.pages.dev) (Cloudflare Pages) y [montaignefix.vercel.app](https://montaignefix.vercel.app) (Vercel, mismo repo). El detalle de producto está en `PROJECT.md`.
 
 ## Cómo se usa
 
 | Quién | Dónde | Qué hace |
 |---|---|---|
 | Profesor | `/` | Abre el parte. Sin contraseña. Como máximo 3 partes cada 24 horas con el mismo email, 10 por hora y 30 por día desde la misma red. Si en un día se pasan de 100, se paran los envíos nuevos. Fran, Curro, `andrescanorodriguez@gmail.com` y `agumasero@gmail.com` no tienen ese tope. `patriciacastilloorozco33@gmail.com`, `susanacrespomarquez@gmail.com`, `remelucia78@gmail.com`, `16.11.96.maria@gmail.com` y `scmary97@gmail.com` pueden abrir 10 cada 24 h y no cuentan para el tope de red. Solo esos Gmail (y el de Curro) entran fuera del dominio corporativo; el resto de Gmail no. |
-| Fran, Curro y Carlos | `/gestion` | Tres pestañas: Abiertas, Resueltas y Cerradas. Asignan, priorizan, compran materiales, cierran, reabren, rechazan o marcan duplicado. Cada uno entra con su contraseña. |
-| Fran, Agustín y Andrés | `/equipo` | PIN compartido (4 cifras; se puede pasar a 6), el mismo para los tres, y luego eligen su nombre. Trabajan solo las tareas que tienen asignadas. |
+| Fran, Curro y Carlos | `/gestion` | Tres pestañas: Abiertas, Resueltas y Cerradas. Asignan a una persona o a un **equipo** (Fran+Agustín, Fran+Andrés, Agustín+Andrés, Fran+Agustín+Andrés), priorizan (o quitan la P pulsando otra vez), compran materiales, cierran, reabren, rechazan o marcan duplicado. Cada uno entra con su contraseña. |
+| Fran, Agustín y Andrés | `/equipo` | PIN compartido (4 cifras; se puede pasar a 6), el mismo para los tres, y luego eligen su nombre. Los combos no se eligen en el PIN: si Gestión o un compañero asignó un equipo, sale en **Mis tareas** de cada miembro. |
 
-Un técnico puede pasar a En curso, En espera o Resuelto, dejar una nota y pedir materiales. No puede marcar nada como comprado ni tocar una tarea de otro. Si se equivoca de persona en el dispositivo, usa «Cambiar de persona».
+**Gestión.** Abiertas = todo salvo Resuelto, Duplicado, Cerrado y Rechazado. Resueltas = solo resueltas. Cerradas = Cerrado y Rechazado. Un duplicado no sale en el listado mientras sigue duplicado; al cerrar el original, los unidos pasan a Cerrado y salen ahí. Si hay asignado, el chip morado muestra el nombre (o el equipo), no la palabra «Asignado». Pulsar otra vez En curso / En espera / Resuelto vuelve a Asignado.
 
-Al abrir un parte salen dos correos: el acuse al profesor y el aviso a Fran. Al resolver, Fran recibe otro. Al cerrar, el profesor recibe el de solucionado. Los logos de esos correos salen de la dirección pública del sitio (`APP_PUBLIC_URL/email/`).
+**Equipo.** Pestañas Mis tareas, Sin asignar y Todas. Mis tareas no incluye Cerrado. Todas = abiertas de cualquiera más las **cerradas que tenía asignadas esa persona** (o un combo suyo), esas cerradas al final. No salen Resuelto, Rechazado ni Duplicado. El técnico puede cambiar el estado de **sus** tareas, dejar notas internas, asignarse, quitarse y pasar el parte a Fran, Agustín, Andrés o un equipo. Puede añadir, editar y borrar materiales pendientes en **cualquier parte abierto**. No marca comprado, no pone prioridad y no cierra, reabre, rechaza ni marca duplicado. Si se equivoca de persona en el dispositivo, usa «Cambiar de persona».
 
-Cada miércoles a las 08:00 (hora de Madrid) Fran y Curro reciben el informe de los últimos 7 días, con PDF. El 1 de julio a las 08:00, ambos reciben el informe de los 12 meses anteriores. Después de un informe anual correcto, se borran solo los partes resueltos o cerrados que tengan más de 12 meses y que ya hayan salido en un informe. Los abiertos, en espera, rechazados y duplicados no se borran. Si el informe anual falla, Curro recibe un aviso y el borrado no avanza. El botón «Enviar informe» de Gestión manda el semanal en el momento (también a Fran y Curro) y no sustituye al del miércoles.
+En las tarjetas del listado (Gestión y Equipo) se ve Reparación, observaciones solo si hay, lugar y materiales.
+
+## Correos
+
+Al abrir un parte: acuse al profesor y aviso a Fran (con fotos). Al resolver: aviso a Fran. Al cerrar: correo de solucionado al profesor; si había avisos unidos, también a cada solicitante distinto, con los datos **de su** parte. Al rechazar: motivo al solicitante (y a los unidos). Al marcar duplicado: correo al solicitante del aviso unido, también si el email es el mismo que el del original. Quitar duplicado no retira un correo ya enviado. Añadir fotos después no manda correo. Los logos salen de `APP_PUBLIC_URL/email/`.
+
+Los informes (semanal, anual y el botón de Gestión) llegan a Fran y a Curro. Carlos entra en Gestión pero no recibe esos informes.
+
+## Informes
+
+Cada miércoles a las 08:00 (hora de Madrid) Fran y Curro reciben el informe de los últimos 7 días, con PDF. El 1 de julio a las 08:00, ambos reciben el de los 12 meses anteriores. El botón «Enviar informe» de Gestión manda el semanal en el momento y no sustituye al del miércoles. No hay informe mensual.
+
+El PDF y el correo del semanal llevan: **Resueltas y cerradas**, **Abiertas**, **Materiales comprados** (en esa semana) y **Pendiente de comprar**. Columna **Fechas/Tiempo**: en resueltas, Abierta / Resuelta (fecha) y Tiempo `XdYh` (horas hacia abajo); en abiertas, solo `Abierta: dd/mm/aa · hh:mm`. Pendiente usa **Solicitado desde**. Luego **Información de las incidencias**: título con enlace a `/gestion/{código}` y ficha (Solicitante, Asignado, Lugar, Reparación, Observaciones si hay, Abierta, Resuelta). Sin historial, fotos, materiales ni notas internas por ticket.
+
+Después de un informe anual correcto, se borran solo los partes resueltos o cerrados que tengan más de 12 meses y que ya hayan salido en un informe. Los abiertos, en espera, rechazados y duplicados no se borran. Si el informe anual falla, Curro recibe un aviso y el borrado no avanza.
 
 El número `MF-0001`, `MF-0002`… no se reutiliza, tampoco si se borra el parte.
 
-Los correos de cada parte van al solicitante y a Fran. Los informes (semanal, anual y el botón de Gestión) llegan a Fran y a Curro.
-
 ## Cambiar el PIN o una contraseña
 
-El PIN y las contraseñas no están en el repositorio. En el servidor solo hay un hash. Cinco fallos seguidos desde la misma IP bloquean ese acceso 15 minutos. Diez fallos del PIN en 15 minutos, vengan de donde vengan, bloquean solo el PIN. Diez fallos de contraseña bloquean solo la gestión. Al cambiar el hash, las sesiones de esa credencial dejan de valer. En Gestión, «Cerrar sesiones del equipo» hace lo mismo con el PIN sin cambiarlo.
+El PIN y las contraseñas no están en el repositorio. En el servidor solo hay un hash. Cinco fallos seguidos del PIN desde la misma IP, o cinco de la contraseña de esa persona, bloquean ese acceso 15 minutos. Diez fallos del PIN en 15 minutos, vengan de donde vengan, bloquean solo el PIN. Diez fallos de contraseña bloquean solo la gestión. Al cambiar el hash, las sesiones de esa credencial dejan de valer. En Gestión, «Cerrar sesiones del equipo» hace lo mismo con el PIN sin cambiarlo.
 
 En PowerShell, desde la carpeta del proyecto. La comilla simple evita que PowerShell interprete `$` y otros signos:
 
@@ -72,11 +86,11 @@ insert into montaigne_fix.staff (slug, name, full_name, email, is_manager, is_te
 values ('lucia', 'Lucía', null, null, false, true);
 ```
 
-`slug` en minúsculas, sin espacios, y que no exista ya. `active` queda en verdadero. Con `is_technician` en verdadero aparece en Equipo y Fran puede asignarle partes. Sin email no recibe correos: le avisa Fran, igual que a Agustín y Andrés.
+`slug` en minúsculas, sin espacios, y que no exista ya. `active` queda en verdadero. Con `is_technician` en verdadero aparece en Equipo y se le pueden asignar partes (Gestión o un compañero). Sin email no recibe correos: le avisa Fran, igual que a Agustín y Andrés.
 
-El orden de los nombres en la pantalla es Fran, Agustín, Andrés y Curro. Un slug nuevo sale el primero hasta que se añada a la lista `ORDER` de `supabase/functions/_shared/auth.ts` y se redespliegue `team-login`.
+El orden de los nombres en Equipo es Fran, Agustín, Andrés y Curro. Un slug nuevo de técnico sale el primero hasta que se añada a la lista `ORDER` de `supabase/functions/_shared/auth.ts` y se redespliegue `team-login`.
 
-Para que alguien sea gerente hace falta, además, `is_manager` en verdadero, un email, y una línea nueva en `PASSWORD_HASH` de ese mismo archivo apuntando a un secreto `MF_ADMIN_PASSWORD_HASH_…`. Hoy Fran, Curro y Carlos son gerentes.
+Para que alguien sea gerente hace falta: `is_manager` en verdadero, un email, una línea en `PASSWORD_HASH` de `auth.ts` apuntando a un secreto `MF_ADMIN_PASSWORD_HASH_…`, una fila en `session_versions` con el mismo slug, el hash en ese secreto, y el nombre en `MANAGERS` de `src/pages/admin/AdminShell.tsx`. Hay que desplegar las funciones que usan `auth.ts` (como mínimo `admin-login` y `session`) y volver a publicar la web. Hoy Fran, Curro y Carlos son gerentes. Un gerente que no sea técnico (Curro, Carlos) no aparece en Equipo.
 
 Para dar de baja a alguien sin borrar su historial: `update montaigne_fix.staff set active = false where slug = 'lucia';`
 
@@ -99,31 +113,33 @@ Secretos de GitHub (Settings → Secrets and variables → Actions):
 
 Si el Action falla un día: mira [Actions → Keep Supabase alive](https://github.com/mundanastudio/montaignefix/actions/workflows/keep-supabase-alive.yml). Entra en [el proyecto](https://supabase.com/dashboard/project/rnghppmuqbdpbkkljnsr) y pulsa **Restore** si está pausado. Cuando vuelva, los datos siguen donde estaban. El informe pendiente se intenta en la siguiente hora en punto, a partir de las 08:00 de Madrid, si ese día tocaba. Luego lanza el workflow a mano para comprobar.
 
-## Cloudflare Pages
+## Publicar la web
 
-La web se publica desde GitHub (`mundanastudio/montaignefix`). Cloudflare compila; no subas la carpeta `dist`.
+**Vercel** (`https://montaignefix.vercel.app`) despliega solo al hacer push a GitHub (`mundanastudio/montaignefix`). `vercel.json` reescribe las rutas de la SPA excepto `/assets/` y `/email/`.
 
-1. Crea la cuenta en [dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up). El plan gratuito sirve.
-2. Workers y Pages → Create → Pages → Connect to Git.
-3. Autoriza GitHub y elige el repositorio `mundanastudio/montaignefix`. Puede ser privado.
-4. Nombre del proyecto: `montaigne-fix`.
-5. Framework: Vite. Comando de build: `npm run build`. Carpeta de salida: `dist`.
-6. Variables de entorno, en Production y en Preview. Solo estas dos, copiadas de `.env.local` o de Supabase → Project Settings → API:
-
-   - `VITE_SUPABASE_URL` = `https://rnghppmuqbdpbkkljnsr.supabase.co`
-   - `VITE_SUPABASE_ANON_KEY` = la clave anon / publishable
-
-   No pongas ahí la service role, el PIN, las contraseñas, SMTP ni `REPORT_CRON_SECRET`. Esos viven solo en los secretos de Supabase.
-7. Save and Deploy. La primera dirección será `https://montaigne-fix.pages.dev` (o la que te asigne Cloudflare).
-8. Cuando esa dirección responda, dile a Supabase cuál es, sin barra al final:
+**Cloudflare Pages** es el proyecto `montaignefix` (`https://montaignefix.pages.dev`). No está conectado a GitHub: hay que subir `dist` a mano. No pongas `_redirects` en `public/` (entra en bucle). Tras el build, escribe ese archivo solo en `dist` y despliega:
 
 ```powershell
-npx supabase@latest secrets set --project-ref rnghppmuqbdpbkkljnsr APP_PUBLIC_URL='https://montaigne-fix.pages.dev'
+$env:NODE_EXTRA_CA_CERTS = "$env:USERPROFILE\.certs\zscaler-root-ca.pem"
+npm run build
+Set-Content -Path dist/_redirects -Value '/* /index.html 200' -NoNewline
+npx wrangler pages deploy dist --project-name montaignefix --commit-dirty=true
 ```
 
-Sin ese paso los correos salen, pero los logos no se ven. Si más adelante el colegio usa un dominio propio, repite el comando con la dirección nueva.
+Variables de build en Cloudflare y Vercel, solo estas dos:
 
-El despliegue usa `npx wrangler deploy`, que ya trata la web como aplicación de una sola página: `/gestion` y `/equipo` funcionan al recargar. No hace falta un `_redirects` hacia `index.html` (esa regla entra en bucle y Cloudflare rechaza el despliegue). `public/_headers` manda `noindex`.
+- `VITE_SUPABASE_URL` = `https://rnghppmuqbdpbkkljnsr.supabase.co`
+- `VITE_SUPABASE_ANON_KEY` = la clave anon / publishable
+
+No pongas ahí la service role, el PIN, las contraseñas, SMTP ni `REPORT_CRON_SECRET`. Esos viven solo en los secretos de Supabase. `public/_headers` manda `noindex`.
+
+`APP_PUBLIC_URL` en Supabase tiene que ser la dirección pública, sin barra al final (hoy `https://montaignefix.pages.dev`). Sin eso los correos salen, pero los logos no se ven. Si el colegio usa un dominio propio, actualiza ese secreto.
+
+Las Edge Functions no salen con el push de la web. Tras cambiar `supabase/functions`:
+
+```powershell
+npx supabase@latest functions deploy --project-ref rnghppmuqbdpbkkljnsr --use-api --yes
+```
 
 ## Revisión de seguridad (11 de octubre de 2026)
 
