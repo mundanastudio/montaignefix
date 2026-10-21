@@ -88,6 +88,17 @@ const rechazadoTxt = render(readFileSync(join(dir, "rechazado.txt"), "utf8"), {
   url_assets: "https://ejemplo.pages.dev/email",
 }, false)
 assert.equal(rechazadoTxt.includes("Línea 1\nLínea 2 <b>no</b> & más"), true)
+
+const mensaje = "Cambio la cerradura.\nPasa por conserjería <b>hoy</b> & firma."
+const cerradoMensajeVars = { ...cerradoVars, mensaje }
+const cerradoMensajeHtml = render(readFileSync(join(dir, "cerrado-mensaje.html"), "utf8"), cerradoMensajeVars, true)
+assert.equal(cerradoMensajeHtml.includes("<b>hoy</b>"), false)
+assert.equal(cerradoMensajeHtml.includes("&lt;b&gt;hoy&lt;/b&gt;"), true)
+assert.equal(cerradoMensajeHtml.includes("&amp;"), true)
+assert.equal(cerradoMensajeHtml.includes("Cambio la cerradura.<br>Pasa por conserjería"), true)
+assert.equal(cerradoMensajeHtml.includes("Mensaje de mantenimiento"), true)
+const cerradoMensajeTxt = render(readFileSync(join(dir, "cerrado-mensaje.txt"), "utf8"), cerradoMensajeVars, false)
+assert.equal(cerradoMensajeTxt.includes("Cambio la cerradura.\nPasa por conserjería <b>hoy</b> & firma."), true)
 assert.equal(clip("áéíóúñ", 3), "áéí")
 assert.equal(escapeHtml(`<>&"'`), "&lt;&gt;&amp;&quot;&#39;")
 assert.equal(fechaConHora("2026-10-12T10:00:00.000Z").includes("12 de octubre de 2026"), true)
@@ -207,7 +218,7 @@ assert.equal(duplicadoTxt.includes("Hola María,"), true)
 assert.equal(duplicadoTxt.includes("MF-0007"), true)
 assert.equal(duplicadoTxt.includes("MF-0042"), true)
 
-for (const name of ["recibido.html", "recibido.txt", "fran-nuevo.html", "fran-nuevo.txt", "fran-resuelto.html", "fran-resuelto.txt", "cerrado.html", "cerrado.txt", "rechazado.html", "rechazado.txt", "duplicado.html", "duplicado.txt"]) {
+for (const name of ["recibido.html", "recibido.txt", "fran-nuevo.html", "fran-nuevo.txt", "fran-resuelto.html", "fran-resuelto.txt", "cerrado.html", "cerrado.txt", "cerrado-mensaje.html", "cerrado-mensaje.txt", "rechazado.html", "rechazado.txt", "duplicado.html", "duplicado.txt"]) {
   assert.equal(readFileSync(join(dir, name), "utf8"), readFileSync(join(assets, name), "utf8"), name)
 }
 

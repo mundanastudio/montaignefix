@@ -7,7 +7,8 @@ Fuente de diseño: esta carpeta. Copia idéntica para las Edge Functions: `supab
 | `recibido` | Se abre un parte | Solicitante |
 | `fran-nuevo` | Se abre un parte | Fran |
 | `fran-resuelto` | Un técnico marca Resuelto | Fran |
-| `cerrado` | Gestión cierra | Solicitante (y cada email distinto de los avisos unidos, con los datos de su parte). Los unidos también quedan cerrados. |
+| `cerrado` | Gestión cierra sin observaciones | Solicitante (y cada email distinto de los avisos unidos, con los datos de su parte). Los unidos también quedan cerrados. |
+| `cerrado-mensaje` | Gestión cierra con observaciones para el solicitante | Igual que `cerrado`, más `{{mensaje}}` (el texto del popup; escapar HTML; saltos de línea → `<br>`). |
 | `rechazado` | Gestión rechaza (con motivo) | Solicitante y quienes abrieron los avisos unidos (cada uno con los datos de su parte) |
 | `duplicado` | Gestión une el aviso a un parte abierto | Solicitante del aviso unido (también si el email es el mismo que el del original). |
 

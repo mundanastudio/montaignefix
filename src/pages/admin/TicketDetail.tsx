@@ -7,6 +7,7 @@ import { Button } from "../../components/ui/Button"
 import { Textarea } from "../../components/ui/Field"
 import { Spinner } from "../../components/ui/Spinner"
 import { eventLine, formatWhen, priorityLabel } from "../../domain/labels"
+import { CLOSE_MESSAGE_MAX, closeMessageReady, trimmedCloseMessage } from "../../domain/closeMessage"
 import { REASON_MAX, REJECT_PRESETS, reasonReady, trimmedReason } from "../../domain/rejectReason"
 import type { AdminContextValue } from "./AdminShell"
 import { Materials } from "../../components/Materials"
@@ -100,6 +101,7 @@ export function TicketDetail() {
   const [duplicateCode, setDuplicateCode] = useState("")
   const [duplicateQuery, setDuplicateQuery] = useState("")
   const [rejectReason, setRejectReason] = useState("")
+  const [closeMessage, setCloseMessage] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -182,9 +184,11 @@ export function TicketDetail() {
     }
     const ticketId = viewed.id
     const payload =
-      name === "admin-set-status" && body.status === "rechazado"
-        ? { ...body, reason: trimmedReason(typeof body.reason === "string" ? body.reason : rejectReason) }
-        : body
+      name === "admin-set-status" && body.status === "cerrado"
+        ? { ...body, message: trimmedCloseMessage(typeof body.message === "string" ? body.message : closeMessage) }
+        : name === "admin-set-status" && body.status === "rechazado"
+          ? { ...body, reason: trimmedReason(typeof body.reason === "string" ? body.reason : rejectReason) }
+          : body
     setBusy(true)
     setError(null)
     setNotice(null)
@@ -201,6 +205,7 @@ export function TicketDetail() {
     setBusy(false)
     setNotice(result.emailError ? `${okMessage} El email al solicitante no ha salido.` : okMessage)
     setDialog(null)
+    if (name === "admin-set-status" && payload.status === "cerrado") setCloseMessage("")
     if (name === "admin-set-status" && payload.status === "rechazado") setRejectReason("")
     if (name === "admin-set-status" && payload.status === "duplicado") {
       setDuplicateCode("")
@@ -537,14 +542,32 @@ export function TicketDetail() {
         title="Cerrar incidencia"
         acceptLabel="Cerrar"
         busy={busy}
+        acceptDisabled={!closeMessageReady(closeMessage)}
         onCancel={() => setDialog(null)}
-        onAccept={() => void run("admin-set-status", { status: "cerrado" }, "Incidencia cerrada.")}
+        onAccept={() =>
+          void run(
+            "admin-set-status",
+            { status: "cerrado", message: trimmedCloseMessage(closeMessage) },
+            "Incidencia cerrada.",
+          )
+        }
       >
         <p>
           Vas a cerrar {ticket.code}. El solicitante recibirá el aviso de que está solucionado.
           {linkedDuplicates.length > 0
             ? " Los avisos unidos también quedan cerrados."
             : ""}
+        </p>
+        <Textarea
+          label="Observaciones para el solicitante"
+          value={closeMessage}
+          rows={5}
+          maxLength={CLOSE_MESSAGE_MAX}
+          hint="Opcional. Si las dejas vacías, le llega el correo habitual. Si escribes algo, lo verá en el aviso."
+          onChange={(event) => setCloseMessage(event.target.value)}
+        />
+        <p className={styles.hint}>
+          {trimmedCloseMessage(closeMessage).length} / {CLOSE_MESSAGE_MAX}
         </p>
       </Confirm>
       <Confirm

@@ -87,7 +87,7 @@ export function publicUrls(base) {
   return { formulario: `${root}/`, assets: `${root}/email` }
 }
 
-const USER_FIELDS = new Set(["nombre", "reparacion", "lugar", "observaciones", "nota_tecnico", "email", "tecnico", "motivo"])
+const USER_FIELDS = new Set(["nombre", "reparacion", "lugar", "observaciones", "nota_tecnico", "email", "tecnico", "motivo", "mensaje"])
 
 function empty(value) {
   if (value === undefined || value === null) return true
@@ -112,7 +112,7 @@ export function fill(template, vars, html) {
     const value = vars[key] ?? ""
     if (html && USER_FIELDS.has(key)) {
       const escaped = escapeHtml(value)
-      return key === "motivo" ? escaped.replace(/\r\n|\r|\n/g, "<br>") : escaped
+      return key === "motivo" || key === "mensaje" ? escaped.replace(/\r\n|\r|\n/g, "<br>") : escaped
     }
     return String(value)
   })

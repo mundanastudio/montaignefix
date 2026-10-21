@@ -14,6 +14,8 @@ const files = [
   ["fran-resuelto.txt", "franResueltoTxt"],
   ["cerrado.html", "cerradoHtml"],
   ["cerrado.txt", "cerradoTxt"],
+  ["cerrado-mensaje.html", "cerradoMensajeHtml"],
+  ["cerrado-mensaje.txt", "cerradoMensajeTxt"],
   ["rechazado.html", "rechazadoHtml"],
   ["rechazado.txt", "rechazadoTxt"],
   ["duplicado.html", "duplicadoHtml"],

@@ -22,7 +22,7 @@ En las tarjetas del listado (Gestión y Equipo) se ve Reparación, observaciones
 
 ## Correos
 
-Al abrir un parte: acuse al profesor y aviso a Fran (con fotos). Al resolver: aviso a Fran. Al cerrar: correo de solucionado al profesor; si había avisos unidos, también a cada solicitante distinto, con los datos **de su** parte. Al rechazar: motivo al solicitante (y a los unidos). Al marcar duplicado: correo al solicitante del aviso unido, también si el email es el mismo que el del original. Quitar duplicado no retira un correo ya enviado. Añadir fotos después no manda correo. Los logos salen de `APP_PUBLIC_URL/email/`.
+Al abrir un parte: acuse al profesor y aviso a Fran (con fotos). Al resolver: aviso a Fran. Al cerrar: popup con observaciones opcionales para el solicitante; vacío manda `cerrado.html`, con texto manda `cerrado-mensaje.html`. Si había avisos unidos, también a cada solicitante distinto, con los datos **de su** parte. Al rechazar: motivo al solicitante (y a los unidos). Al marcar duplicado: correo al solicitante del aviso unido, también si el email es el mismo que el del original. Quitar duplicado no retira un correo ya enviado. Añadir fotos después no manda correo. Los logos salen de `APP_PUBLIC_URL/email/`.
 
 Los informes (semanal, anual y el botón de Gestión) llegan a Fran y a Curro. Carlos entra en Gestión pero no recibe esos informes.
 

@@ -1,0 +1,22 @@
+Hola {{nombre}}, ya está arreglado.
+
+El equipo de mantenimiento ha terminado la reparación que nos pediste. Gracias por avisarnos.
+
+MENSAJE DE MANTENIMIENTO
+{{mensaje}}
+
+PARTE {{codigo}}
+Reparación:      {{reparacion}}
+Lugar:           {{lugar}}
+Lo pediste el:   {{fecha_apertura}}
+Solucionado el:  {{fecha_cierre}}
+
+¿Algo no ha quedado bien? Abre un nuevo parte y escribe {{codigo}} en las observaciones para que lo revisemos:
+{{url_formulario}}
+
+--
+Montaigne Fix · Colegio Montaigne de Sevilla
+powered by Mundana Studio
+
+Mensaje automático. No respondas a este correo.
+Recibes este email porque abriste un parte de reparación. Tus datos se conservan 12 meses y se usan solo para gestionar la reparación (Grupo Montaigne).

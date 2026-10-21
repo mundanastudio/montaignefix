@@ -1,6 +1,8 @@
 // Envío SMTP por el puerto 465. Un fallo aquí no deshace el parte: se apunta en email_log.
 import {
   cerradoHtml,
+  cerradoMensajeHtml,
+  cerradoMensajeTxt,
   cerradoTxt,
   duplicadoHtml,
   duplicadoTxt,
@@ -613,20 +615,21 @@ export async function notifyRejected(ticketId: string, reason: string): Promise<
   return { ok: error === null, error }
 }
 
-async function sendClosedMail(ticket: TicketMail): Promise<{ ok: boolean; error: string | null }> {
+async function sendClosedMail(ticket: TicketMail, message: string): Promise<{ ok: boolean; error: string | null }> {
   const links = urls()
   const subject = subjectSolucionado(ticket.description, ticket.code)
   if (!links) {
     await record({ ticketId: ticket.id, kind: "cerrado", recipient: ticket.requester_email, subject, ok: false, error: "Falta APP_PUBLIC_URL." })
     return { ok: false, error: "Falta APP_PUBLIC_URL." }
   }
+  const withMessage = message.length > 0
   return rendered({
     kind: "cerrado",
     ticketId: ticket.id,
     to: ticket.requester_email,
     subject,
-    htmlTemplate: cerradoHtml,
-    textTemplate: cerradoTxt,
+    htmlTemplate: withMessage ? cerradoMensajeHtml : cerradoHtml,
+    textTemplate: withMessage ? cerradoMensajeTxt : cerradoTxt,
     vars: {
       nombre: plain(ticket.requester_name),
       codigo: ticket.code,
@@ -636,32 +639,36 @@ async function sendClosedMail(ticket: TicketMail): Promise<{ ok: boolean; error:
       fecha_cierre: fechaLarga(ticket.closed_at ?? new Date().toISOString()),
       url_formulario: links.formulario,
       url_assets: links.assets,
+      ...(withMessage ? { mensaje: message } : {}),
     },
   })
 }
 
-export async function notifyClosed(ticketId: string, linked: TicketMail[] = []): Promise<{ ok: boolean; error: string | null }> {
+export async function notifyClosed(ticketId: string, linked: TicketMail[] = [], message = ""): Promise<{ ok: boolean; error: string | null }> {
   const ticket = await loadTicket(ticketId)
   if (!ticket) {
     await record({ ticketId, kind: "cerrado", recipient: "", subject: "Parte cerrado", ok: false, error: "No se ha podido leer el parte para avisar al solicitante." })
     return { ok: false, error: "No se ha podido leer el parte para avisar al solicitante." }
   }
-  const primary = await sendClosedMail(ticket)
+  const primary = await sendClosedMail(ticket, message)
   const extras = uniqueClosedRecipients(ticket.requester_email, linked)
   let error = primary.error
   for (const row of extras) {
     const fresh = await loadTicket(row.id)
-    const mail = await sendClosedMail({
-      ...(fresh ?? ticket),
-      id: String(row.id),
-      code: String(row.code),
-      requester_name: String(row.requester_name),
-      requester_email: String(row.requester_email),
-      description: String(row.description),
-      location: String(row.location),
-      created_at: String(row.created_at),
-      closed_at: fresh?.closed_at ?? ticket.closed_at,
-    })
+    const mail = await sendClosedMail(
+      {
+        ...(fresh ?? ticket),
+        id: String(row.id),
+        code: String(row.code),
+        requester_name: String(row.requester_name),
+        requester_email: String(row.requester_email),
+        description: String(row.description),
+        location: String(row.location),
+        created_at: String(row.created_at),
+        closed_at: fresh?.closed_at ?? ticket.closed_at,
+      },
+      message,
+    )
     if (!mail.ok) error = error ?? mail.error
   }
   return { ok: error === null, error }
